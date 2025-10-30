@@ -9,10 +9,12 @@ const groq = createGroq({
 const model = groq('llama-3.1-8b-instant');
 
 // Use Llama 3.3 70B for higher quality scoring
-const scoringModel = groq('llama-3.3-70b-versatile');
+// const scoringModel = groq('llama-3.3-70b-versatile');
+const scoringModel = model;
 
 export async function generateQuestion(prompt: string): Promise<string> {
-  const fullPrompt = `Generate a natural user request that an AI assistant might receive.
+  const maxWords = parseInt(process.env.NEXT_PUBLIC_MAX_PATH_LENGTH || '12');
+  const fullPrompt = `Generate a simple natural user request that an AI assistant might receive **NO CODING OR COMPOSING EMAIL**, that can be answered within ${maxWords} words. 
 
 Topic: "${prompt}"
 
@@ -55,22 +57,24 @@ export async function getNextWord(
   // Build context based on whether we have a current path
   const contextPrompt = currentPath.length === 0 
     ? `You are starting a new response. What are the 3 most likely FIRST WORDS to begin answering this request?`
-    : `The response has already started with: "${currentText}"\n\nWhat are the 3 most likely NEXT WORDS that should come after "${currentText}"?`;
+    : `The current response: "${currentText} ______"\n\nWhat are the top 3 most likely NEXT WORDS that should come after "${currentText}"?`;
   
   const fullPrompt = `A human is role playing an AI and picking up the next word for THIS user request: "${question}"
-
-${contextPrompt}
 
 IMPORTANT RULES:
 - There are other models doing the same thing with fake question! Try lead the human to select your keywords to make it related to your question!
 - Provide 3 DIFFERENT words that would naturally continue from where the response currently is
 - Each word should be distinct and make sense as the NEXT word in sequence
-- The human only has ${wordsRemaining} words remaining! Keep the response concise and direct
+- The human only has ${wordsRemaining} words remaining! Keep the response concise and direct, DO NOT repeat the question!
 - DO NOT use filler phrases like "Here's", "Below is", "An example of", etc. - get straight to the point
 
 Respond with EXACTLY 3 words separated by commas.
 Format: word1, word2, word3
-Example: "the, a, some" or "help, assist, today"`;
+Example: "the, a, some" or "help, assist, today"
+
+${contextPrompt}
+
+`;
 
   console.log('\n🤖 PROMPT SENT TO LLM:');
   console.log('━'.repeat(80));
@@ -115,15 +119,19 @@ export async function scoreUserPath(
   analysis: string;
 }> {
   const userAnswer = userPath.join(' ');
-
+  const maxWords = parseInt(process.env.NEXT_PUBLIC_MAX_PATH_LENGTH || '12');
   const fullPrompt = `Evaluate this answer to the question.
 
 Question: "${question}"
-User's Answer: "${userAnswer}"
+Answer: "${userAnswer}"
+
+The user mimicked a simple AI response to the question with a word limit of ${maxWords} words
 
 Rate the user's answer on:
 1. Coherence (0-100): How well-formed and logical is it?
 2. Relevance (0-100): How well does it answer the question?
+
+Keep in mind that word limit limits the upper bound of respond, so do not be too strict!
 
 Provide your response as JSON:
 {
