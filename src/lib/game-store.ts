@@ -1,4 +1,4 @@
-import { GameState } from '@/types/game';
+import type { GameState } from '@/types/game';
 
 class GameStore {
   private games = new Map<string, GameState>();

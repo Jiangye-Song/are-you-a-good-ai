@@ -26,6 +26,7 @@ export function FakeInput({ currentText, choices, onSelectWord, onSubmit, disabl
               {choices.map((word, index) => (
                 <button
                   key={index}
+                  type="button"
                   onClick={() => onSelectWord(word)}
                   disabled={disabled}
                   className="px-3 py-2 bg-white hover:bg-blue-50 border border-gray-200 hover:border-blue-300 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -51,6 +52,7 @@ export function FakeInput({ currentText, choices, onSelectWord, onSubmit, disabl
               </p>
             </div>
             <button
+              type="button"
               onClick={onSubmit}
               disabled={disabled || !currentText}
               className={
@@ -58,6 +60,7 @@ export function FakeInput({ currentText, choices, onSelectWord, onSubmit, disabl
                   ? 'shrink-0 w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 cursor-not-allowed'
                   : 'shrink-0 w-10 h-10 rounded-full bg-blue-600 hover:bg-blue-700 flex items-center justify-center text-white cursor-pointer transition-colors'
               }
+              aria-label="Submit response"
             >
               <svg
                 width="20"
@@ -68,6 +71,7 @@ export function FakeInput({ currentText, choices, onSelectWord, onSubmit, disabl
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
+                aria-hidden="true"
               >
                 <line x1="12" y1="19" x2="12" y2="5" />
                 <polyline points="5 12 12 5 19 12" />

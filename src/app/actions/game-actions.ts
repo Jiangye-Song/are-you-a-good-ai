@@ -3,7 +3,7 @@
 import { gameStore } from '@/lib/game-store';
 import { generateQuestion, getNextWord, scoreUserPath } from '@/lib/ai';
 import { generateDistinctPrompts } from '@/lib/prompts';
-import { GameState } from '@/types/game';
+import type { GameState } from '@/types/game';
 import { randomUUID } from 'crypto';
 
 export async function startNewGame(): Promise<{

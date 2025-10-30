@@ -31,6 +31,7 @@ export function ErrorSnackbar({ message, onClose }: ErrorSnackbarProps) {
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
+          aria-hidden="true"
         >
           <path
             strokeLinecap="round"
@@ -41,17 +42,20 @@ export function ErrorSnackbar({ message, onClose }: ErrorSnackbarProps) {
         </svg>
         <p className="text-sm font-medium">{message}</p>
         <button
+          type="button"
           onClick={() => {
             setVisible(false);
             setTimeout(onClose, 300);
           }}
           className="ml-2 shrink-0 hover:bg-red-700 rounded p-1 transition-colors"
+          aria-label="Close error message"
         >
           <svg
             className="w-4 h-4"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
+            aria-hidden="true"
           >
             <path
               strokeLinecap="round"
