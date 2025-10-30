@@ -51,28 +51,43 @@ export default function Home() {
     setUserPath(result.userPath || []);
 
     if (result.isComplete) {
-      setPhase('scoring');
-      
-      // Generate user reaction and calculate score in parallel
-      const [reaction, scoreResult] = await Promise.all([
-        generateUserReaction(result.userPath?.join(' ') || '', true),
-        calculateFinalScore(sessionId),
-      ]);
-
-      if (scoreResult.success) {
-        // Map reaction type to message
-        const reactionMessages = {
-          appreciation: ['Thanks!', 'Great!', 'Perfect!', 'Awesome!', 'Nice!'],
-          dislike: ['Hmm...', 'Not sure about that...', 'Really?', 'Ugh...', 'Meh...'],
-          confused: ['Wait, what?', 'Huh?', 'Confused...', 'What??', 'Umm...'],
-        };
-        const messages = reactionMessages[reaction];
-        setUserReaction(messages[Math.floor(Math.random() * messages.length)]);
-        setScore(scoreResult.score);
-        setPhase('results');
-      }
+      await finishGame(result.userPath || []);
     } else {
       setChoices(result.nextChoices || []);
+    }
+  }
+
+  async function handleSubmit() {
+    if (!userPath.length) return;
+    
+    // Mark game as complete without selecting another word
+    const result = await selectWord(sessionId, '[SUBMIT]');
+    
+    if (result.success) {
+      await finishGame(result.userPath || []);
+    }
+  }
+
+  async function finishGame(finalPath: string[]) {
+    setPhase('scoring');
+    
+    // Generate user reaction and calculate score in parallel
+    const [reaction, scoreResult] = await Promise.all([
+      generateUserReaction(finalPath.join(' '), true),
+      calculateFinalScore(sessionId),
+    ]);
+
+    if (scoreResult.success) {
+      // Map reaction type to message
+      const reactionMessages = {
+        appreciation: ['Thanks!', 'Great!', 'Perfect!', 'Awesome!', 'Nice!'],
+        dislike: ['Hmm...', 'Not sure about that...', 'Really?', 'Ugh...', 'Meh...'],
+        confused: ['Wait, what?', 'Huh?', 'Confused...', 'What??', 'Umm...'],
+      };
+      const messages = reactionMessages[reaction];
+      setUserReaction(messages[Math.floor(Math.random() * messages.length)]);
+      setScore(scoreResult.score);
+      setPhase('results');
     }
   }
 
@@ -157,9 +172,6 @@ export default function Home() {
       <header className="border-b px-4 py-3 bg-white sticky top-0 z-10 shadow-sm">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <h1 className="text-lg font-semibold">Are You a Good AI?</h1>
-          <div className="text-xs text-gray-500">
-            Word {userPath.length} / {process.env.NEXT_PUBLIC_MAX_PATH_LENGTH || 12}
-          </div>
         </div>
       </header>
 
@@ -186,7 +198,9 @@ export default function Home() {
           currentText={currentText}
           choices={choices}
           onSelectWord={handleWordSelect}
+          onSubmit={handleSubmit}
           disabled={phase !== 'playing'}
+          currentWordCount={userPath.length}
         />
       </Suspense>
     </div>

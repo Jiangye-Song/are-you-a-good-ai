@@ -11,21 +11,19 @@ const model = groq('llama-3.1-8b-instant');
 // Use Llama 3.3 70B for higher quality scoring
 const scoringModel = groq('llama-3.3-70b-versatile');
 
-export async function generateQuestionAndPath(prompt: string): Promise<{
-  question: string;
-  path: string[];
-}> {
-  const fullPrompt = `You are simulating a typical user request to an AI assistant.
+export async function generateQuestion(prompt: string): Promise<string> {
+  const fullPrompt = `Generate a natural user request that an AI assistant might receive.
 
-Generate a natural user request based on this prompt: "${prompt}"
+Topic: "${prompt}"
 
-Then provide a helpful, concise response (2-3 sentences, around 15-20 words total).
+Generate ONLY the user question (not the answer). Make it sound natural, like a real person asking.
 
-Format your response as JSON:
-{
-  "question": "the user request here (make it sound natural, like a real person asking)",
-  "answer": "the helpful response here"
-}`;
+Examples:
+- "Can you help me plan a weekend getaway?"
+- "What's the best way to cook pasta?"
+- "How do I improve my time management skills?"
+
+Your question:`;
 
   console.log('\n🎲 GENERATING QUESTION:');
   console.log('━'.repeat(80));
@@ -38,22 +36,12 @@ Format your response as JSON:
     temperature: 0.9,
   });
 
-  console.log('✅ LLM RESPONSE:', text);
+  const question = text.trim().replace(/^["']|["']$/g, ''); // Remove quotes if present
+  
+  console.log('✅ LLM RESPONSE:', question);
+  console.log('');
 
-  // Clean markdown code blocks if present
-  const cleanText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-  const parsed = JSON.parse(cleanText);
-  const words = parsed.answer.split(' ').filter((w: string) => w.length > 0);
-
-  // Log to console for debugging
-  console.log('\n🎯 Generated Request:', parsed.question);
-  console.log('📝 AI Response:', parsed.answer);
-  console.log('🔢 Word count:', words.length);
-
-  return {
-    question: parsed.question,
-    path: words,
-  };
+  return question;
 }
 
 export async function getNextWord(
@@ -73,16 +61,16 @@ export async function getNextWord(
 
 ${contextPrompt}
 
-Words remaining in response: ${wordsRemaining}
-
 IMPORTANT RULES:
-- If the response feels complete or nearly complete, include "[end]" as one option
 - There are other models doing the same thing with fake question! Try lead the human to select your keywords to make it related to your question!
 - Provide 3 DIFFERENT words that would naturally continue from where the response currently is
+- Each word should be distinct and make sense as the NEXT word in sequence
+- The human only has ${wordsRemaining} words remaining! Keep the response concise and direct
+- DO NOT use filler phrases like "Here's", "Below is", "An example of", etc. - get straight to the point
 
 Respond with EXACTLY 3 words separated by commas.
 Format: word1, word2, word3
-Example: "the, a, some" or "help, assist, [end]"`;
+Example: "the, a, some" or "help, assist, today"`;
 
   console.log('\n🤖 PROMPT SENT TO LLM:');
   console.log('━'.repeat(80));
@@ -102,12 +90,15 @@ Example: "the, a, some" or "help, assist, [end]"`;
     .trim()
     .split(',')
     .map(w => w.trim().split(/\s+/)[0].replace(/[.,!?;:"]$/g, ''))
-    .filter(w => w.length > 0)
+    .filter(w => w.length > 0 && w !== '[end]')
     .slice(0, 3);
   
-  // Ensure we have exactly 3 options
+  // Ensure we have exactly 3 options (use common words if needed)
+  const fallbacks = ['and', 'the', 'to', 'a', 'in', 'for', 'with', 'on', 'of'];
+  let fallbackIndex = 0;
   while (words.length < 3) {
-    words.push('[end]');
+    words.push(fallbacks[fallbackIndex % fallbacks.length]);
+    fallbackIndex++;
   }
   
   console.log(`  → 3 options for "${question.substring(0, 40)}...": [${words.join(', ')}]`);
@@ -118,25 +109,21 @@ Example: "the, a, some" or "help, assist, [end]"`;
 
 export async function scoreUserPath(
   question: string,
-  userPath: string[],
-  optimalPath: string[]
+  userPath: string[]
 ): Promise<{
   coherenceScore: number;
   analysis: string;
 }> {
   const userAnswer = userPath.join(' ');
-  const optimalAnswer = optimalPath.join(' ');
 
   const fullPrompt = `Evaluate this answer to the question.
 
 Question: "${question}"
 User's Answer: "${userAnswer}"
-Optimal Answer: "${optimalAnswer}"
 
 Rate the user's answer on:
 1. Coherence (0-100): How well-formed and logical is it?
 2. Relevance (0-100): How well does it answer the question?
-3. Semantic similarity to optimal answer (0-100)
 
 Provide your response as JSON:
 {

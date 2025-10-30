@@ -1,7 +1,7 @@
 'use server';
 
 import { gameStore } from '@/lib/game-store';
-import { generateQuestionAndPath, getNextWord, scoreUserPath } from '@/lib/ai';
+import { generateQuestion, getNextWord, scoreUserPath } from '@/lib/ai';
 import { generateDistinctPrompts } from '@/lib/prompts';
 import { GameState } from '@/types/game';
 import { randomUUID } from 'crypto';
@@ -20,20 +20,20 @@ export async function startNewGame(): Promise<{
   console.log('  Fake A:', promptFakeA);
   console.log('  Fake B:', promptFakeB);
 
-  // Generate questions (we only need the questions, not full answers)
-  const [real, fakeA, fakeB] = await Promise.all([
-    generateQuestionAndPath(promptReal),
-    generateQuestionAndPath(promptFakeA),
-    generateQuestionAndPath(promptFakeB),
+  // Generate questions in parallel
+  const [realQuestion, fakeQuestionA, fakeQuestionB] = await Promise.all([
+    generateQuestion(promptReal),
+    generateQuestion(promptFakeA),
+    generateQuestion(promptFakeB),
   ]);
 
   // Create game state
   const sessionId = randomUUID();
   const gameState: GameState = {
     sessionId,
-    realQuestion: real.question,
-    fakeQuestionA: fakeA.question,
-    fakeQuestionB: fakeB.question,
+    realQuestion,
+    fakeQuestionA,
+    fakeQuestionB,
     userPath: [],
     currentTurn: 0,
     isComplete: false,
@@ -48,9 +48,9 @@ export async function startNewGame(): Promise<{
   
   // Get 3 words for each question (empty path = starting)
   const [wordsReal, wordsFakeA, wordsFakeB] = await Promise.all([
-    getNextWord(real.question, [], maxLength),
-    getNextWord(fakeA.question, [], maxLength),
-    getNextWord(fakeB.question, [], maxLength),
+    getNextWord(realQuestion, [], maxLength),
+    getNextWord(fakeQuestionA, [], maxLength),
+    getNextWord(fakeQuestionB, [], maxLength),
   ]);
 
   // Combine all 9 words and shuffle
@@ -62,7 +62,7 @@ export async function startNewGame(): Promise<{
 
   return {
     sessionId,
-    question: real.question,
+    question: realQuestion,
     initialChoices,
   };
 }
@@ -87,12 +87,12 @@ export async function selectWord(
     return { success: false, error: 'Game already complete' };
   }
 
-  // Check if user chose to end early
-  if (word === '[end]') {
+  // Check if user submitted manually
+  if (word === '[SUBMIT]') {
     gameState.isComplete = true;
     gameStore.set(sessionId, gameState);
 
-    console.log('🏁 User chose to end early!');
+    console.log('📝 User submitted manually!');
     console.log('   Final path:', gameState.userPath.join(' '));
 
     return {
@@ -177,16 +177,10 @@ export async function calculateFinalScore(sessionId: string): Promise<{
   console.log('\n📊 Calculating final score...');
   console.log('User answer:', gameState.userPath.join(' '));
 
-  // Generate what the optimal answer would be for the real question
-  const optimalResponse = await generateQuestionAndPath(
-    `Complete this response: "${gameState.userPath.join(' ')}"`
-  );
-
   // Get AI coherence score
   const { coherenceScore, analysis } = await scoreUserPath(
     gameState.realQuestion,
-    gameState.userPath,
-    optimalResponse.path
+    gameState.userPath
   );
 
   console.log('🎯 Coherence Score:', coherenceScore);

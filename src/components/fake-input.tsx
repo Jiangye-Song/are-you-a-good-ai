@@ -4,10 +4,15 @@ interface FakeInputProps {
   currentText: string;
   choices: string[];
   onSelectWord: (word: string) => void;
+  onSubmit: () => void;
   disabled?: boolean;
+  currentWordCount?: number;
 }
 
-export function FakeInput({ currentText, choices, onSelectWord, disabled }: FakeInputProps) {
+export function FakeInput({ currentText, choices, onSelectWord, onSubmit, disabled, currentWordCount = 0 }: FakeInputProps) {
+  const maxWords = parseInt(process.env.NEXT_PUBLIC_MAX_PATH_LENGTH || '12');
+  const remainingWords = maxWords - currentWordCount;
+  
   return (
     <div className="border-t bg-white sticky bottom-0">
       {/* Word choices - shown above input */}
@@ -15,7 +20,7 @@ export function FakeInput({ currentText, choices, onSelectWord, disabled }: Fake
         <div className="border-b bg-gray-50 px-4 py-3">
           <div className="max-w-4xl mx-auto">
             <p className="text-xs text-gray-500 mb-2 font-medium">
-              Choose the next word:
+              Choose the next word (up to {remainingWords} more word{remainingWords !== 1 ? 's' : ''}):
             </p>
             <div className="grid grid-cols-3 gap-2">
               {choices.map((word, index) => (
@@ -23,13 +28,9 @@ export function FakeInput({ currentText, choices, onSelectWord, disabled }: Fake
                   key={index}
                   onClick={() => onSelectWord(word)}
                   disabled={disabled}
-                  className={
-                    word === '[end]'
-                      ? 'px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
-                      : 'px-3 py-2 bg-white hover:bg-blue-50 border border-gray-200 hover:border-blue-300 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
-                  }
+                  className="px-3 py-2 bg-white hover:bg-blue-50 border border-gray-200 hover:border-blue-300 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {word === '[end]' ? '🏁 End' : word}
+                  {word}
                 </button>
               ))}
             </div>
@@ -50,8 +51,13 @@ export function FakeInput({ currentText, choices, onSelectWord, disabled }: Fake
               </p>
             </div>
             <button
-              disabled
-              className="shrink-0 w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 cursor-not-allowed"
+              onClick={onSubmit}
+              disabled={disabled || !currentText}
+              className={
+                disabled || !currentText
+                  ? 'shrink-0 w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 cursor-not-allowed'
+                  : 'shrink-0 w-10 h-10 rounded-full bg-blue-600 hover:bg-blue-700 flex items-center justify-center text-white cursor-pointer transition-colors'
+              }
             >
               <svg
                 width="20"
@@ -69,7 +75,7 @@ export function FakeInput({ currentText, choices, onSelectWord, disabled }: Fake
             </button>
           </div>
           <p className="text-xs text-gray-400 mt-2 text-center">
-            Select words above to build your response word-by-word
+            Select words above to build your response • Click submit when ready
           </p>
         </div>
       </div>
