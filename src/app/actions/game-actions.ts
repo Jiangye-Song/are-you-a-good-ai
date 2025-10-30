@@ -4,7 +4,7 @@ import { gameStore } from '@/lib/game-store';
 import { generateQuestion, getNextWord, scoreUserPath } from '@/lib/ai';
 import { generateDistinctPrompts } from '@/lib/prompts';
 import type { GameState } from '@/types/game';
-import { randomUUID } from 'crypto';
+import { randomUUID } from 'node:crypto';
 
 export async function startNewGame(): Promise<{
   sessionId: string;
@@ -45,7 +45,7 @@ export async function startNewGame(): Promise<{
 
   console.log('\n🔮 Generating first word choices (9 total: 3 per question)...');
   
-  const maxLength = parseInt(process.env.MAX_PATH_LENGTH || '12');
+  const maxLength = parseInt(process.env.MAX_PATH_LENGTH || '12', 10);
   
   // Get 3 words for each question (empty path = starting)
   const [wordsReal, wordsFakeA, wordsFakeB] = await Promise.all([
@@ -59,7 +59,9 @@ export async function startNewGame(): Promise<{
   const initialChoices = Array.from(uniqueWordsSet).sort(() => Math.random() - 0.5);
 
   // Add all words to the game state Set
-  initialChoices.forEach(word => gameState.allGeneratedWords.add(word));
+  for (const word of initialChoices) {
+    gameState.allGeneratedWords.add(word);
+  }
 
   console.log('✅ Initial choices (unique words):', initialChoices);
 
@@ -113,7 +115,7 @@ export async function selectWord(
   console.log('   Current path:', gameState.userPath.join(' '));
 
   // Check if game should end
-  const maxLength = parseInt(process.env.MAX_PATH_LENGTH || '12');
+  const maxLength = parseInt(process.env.MAX_PATH_LENGTH || '12', 10);
   if (gameState.userPath.length >= maxLength) {
     gameState.isComplete = true;
     gameStore.set(sessionId, gameState);
@@ -142,7 +144,9 @@ export async function selectWord(
     const nextChoices = Array.from(uniqueWordsSet).sort(() => Math.random() - 0.5);
 
     // Add all words to the Set
-    nextChoices.forEach(word => gameState.allGeneratedWords.add(word));
+    for (const word of nextChoices) {
+      gameState.allGeneratedWords.add(word);
+    }
 
     console.log('✅ Next choices (unique words):', nextChoices);
 
@@ -154,13 +158,14 @@ export async function selectWord(
       userPath: gameState.userPath,
       isComplete: false,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ Error generating next words:', error);
     
     // Check if it's a rate limit error
-    const isRateLimit = error?.message?.includes('Rate limit') || error?.message?.includes('Limit');
-    const errorMessage = isRateLimit 
-      ? 'Rate limit reached. Please wait a moment and try again.'
+    const errorMessage = error instanceof Error && error.message
+      ? error.message.includes('Rate limit') || error.message.includes('Limit')
+        ? 'Rate limit reached. Please wait a moment and try again.'
+        : 'Failed to generate word choices. Please try again.'
       : 'Failed to generate word choices. Please try again.';
     
     return {

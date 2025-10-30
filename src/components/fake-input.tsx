@@ -10,7 +10,7 @@ interface FakeInputProps {
 }
 
 export function FakeInput({ currentText, choices, onSelectWord, onSubmit, disabled, currentWordCount = 0 }: FakeInputProps) {
-  const maxWords = parseInt(process.env.NEXT_PUBLIC_MAX_PATH_LENGTH || '12');
+  const maxWords = parseInt(process.env.NEXT_PUBLIC_MAX_PATH_LENGTH || '12', 10);
   const remainingWords = maxWords - currentWordCount;
   
   return (

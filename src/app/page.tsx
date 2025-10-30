@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useCallback } from 'react';
 import { ChatMessage } from '@/components/chat-message';
 import { FakeInput } from '@/components/fake-input';
 import { GameResults } from '@/components/game-results';
@@ -16,21 +16,29 @@ import { generateUserReaction } from './actions/generate-reaction';
 
 type GamePhase = 'loading' | 'playing' | 'scoring' | 'results';
 
+interface GameScore {
+  aiCoherenceScore: number;
+  totalScore: number;
+  analysis: string;
+  userPath: string[];
+  userAnswer: string;
+  realQuestion: string;
+  fakeQuestionA: string;
+  fakeQuestionB: string;
+  allGeneratedWords?: string[];
+}
+
 export default function Home() {
   const [phase, setPhase] = useState<GamePhase>('loading');
   const [sessionId, setSessionId] = useState<string>('');
   const [question, setQuestion] = useState<string>('');
   const [userPath, setUserPath] = useState<string[]>([]);
   const [choices, setChoices] = useState<string[]>([]);
-  const [score, setScore] = useState<any>(null);
+  const [score, setScore] = useState<GameScore | null>(null);
   const [userReaction, setUserReaction] = useState<string>('');
   const [error, setError] = useState<string>('');
 
-  useEffect(() => {
-    initGame();
-  }, []);
-
-  async function initGame() {
+  const initGame = useCallback(async () => {
     setPhase('loading');
     const result = await startNewGame();
     setSessionId(result.sessionId);
@@ -40,7 +48,11 @@ export default function Home() {
     setScore(null);
     setUserReaction('');
     setPhase('playing');
-  }
+  }, []);
+
+  useEffect(() => {
+    initGame();
+  }, [initGame]);
 
   async function handleWordSelect(word: string) {
     try {
@@ -84,12 +96,12 @@ export default function Home() {
       calculateFinalScore(sessionId),
     ]);
 
-    if (scoreResult.success) {
+    if (scoreResult.success && scoreResult.score) {
       // Map reaction type to message
       const reactionMessages = {
         appreciation: ['Thanks!', 'Great!', 'Perfect!', 'Awesome!', 'Nice!'],
-        dislike: ['Bruh', 'Huh?', 'Really?', 'Ugh...', 'Meh...'],
-        confused: ['Wait, what?', 'Not sure about that...', 'Wdym?', 'What??', 'Umm...'],
+        dislike: ['Hmm...', 'Not sure about that...', 'Really?', 'Ugh...', 'Meh...'],
+        confused: ['Wait, what?', 'Huh?', 'Confused...', 'What??', 'Umm...'],
       };
       const messages = reactionMessages[reaction];
       setUserReaction(messages[Math.floor(Math.random() * messages.length)]);

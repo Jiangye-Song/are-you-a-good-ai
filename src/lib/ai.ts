@@ -13,7 +13,7 @@ const model = groq('llama-3.1-8b-instant');
 const scoringModel = model;
 
 export async function generateQuestion(prompt: string): Promise<string> {
-  const maxWords = parseInt(process.env.NEXT_PUBLIC_MAX_PATH_LENGTH || '12');
+  const maxWords = parseInt(process.env.NEXT_PUBLIC_MAX_PATH_LENGTH || '12', 10);
   const fullPrompt = `Generate a simple natural user request that an AI assistant might receive **NO CODING OR COMPOSING EMAIL**, that can be answered within ${maxWords} words. 
 
 Topic: "${prompt}"
@@ -119,7 +119,7 @@ export async function scoreUserPath(
   analysis: string;
 }> {
   const userAnswer = userPath.join(' ');
-  const maxWords = parseInt(process.env.NEXT_PUBLIC_MAX_PATH_LENGTH || '12');
+  const maxWords = parseInt(process.env.NEXT_PUBLIC_MAX_PATH_LENGTH || '12', 10);
   const fullPrompt = `Evaluate this answer to the question.
 
 Question: "${question}"
