@@ -6,6 +6,7 @@ import { FakeInput } from '@/components/fake-input';
 import { GameResults } from '@/components/game-results';
 import { Button } from '@/components/ui/button';
 import { ChatSkeleton, WordChoicesSkeleton } from '@/components/loading-skeletons';
+import { ErrorSnackbar } from '@/components/error-snackbar';
 import {
   startNewGame,
   selectWord,
@@ -23,6 +24,7 @@ export default function Home() {
   const [choices, setChoices] = useState<string[]>([]);
   const [score, setScore] = useState<any>(null);
   const [userReaction, setUserReaction] = useState<string>('');
+  const [error, setError] = useState<string>('');
 
   useEffect(() => {
     initGame();
@@ -41,19 +43,24 @@ export default function Home() {
   }
 
   async function handleWordSelect(word: string) {
-    const result = await selectWord(sessionId, word);
+    try {
+      const result = await selectWord(sessionId, word);
 
-    if (!result.success) {
-      alert(result.error);
-      return;
-    }
+      if (!result.success) {
+        setError(result.error || 'An error occurred');
+        return;
+      }
 
-    setUserPath(result.userPath || []);
+      setUserPath(result.userPath || []);
 
-    if (result.isComplete) {
-      await finishGame(result.userPath || []);
-    } else {
-      setChoices(result.nextChoices || []);
+      if (result.isComplete) {
+        await finishGame(result.userPath || []);
+      } else {
+        setChoices(result.nextChoices || []);
+      }
+    } catch (err) {
+      console.error('Error selecting word:', err);
+      setError('Failed to process selection. Please try again.');
     }
   }
 
@@ -203,6 +210,9 @@ export default function Home() {
           currentWordCount={userPath.length}
         />
       </Suspense>
+
+      {/* Error snackbar */}
+      {error && <ErrorSnackbar message={error} onClose={() => setError('')} />}
     </div>
   );
 }

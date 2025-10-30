@@ -127,27 +127,42 @@ export async function selectWord(
   // Generate next word options based on current user path (9 total: 3 per question)
   console.log('🔮 Generating next word choices for current path...');
   
-  const [wordsReal, wordsFakeA, wordsFakeB] = await Promise.all([
-    getNextWord(gameState.realQuestion, gameState.userPath, maxLength),
-    getNextWord(gameState.fakeQuestionA, gameState.userPath, maxLength),
-    getNextWord(gameState.fakeQuestionB, gameState.userPath, maxLength),
-  ]);
+  try {
+    const [wordsReal, wordsFakeA, wordsFakeB] = await Promise.all([
+      getNextWord(gameState.realQuestion, gameState.userPath, maxLength),
+      getNextWord(gameState.fakeQuestionA, gameState.userPath, maxLength),
+      getNextWord(gameState.fakeQuestionB, gameState.userPath, maxLength),
+    ]);
 
-  // Combine all 9 words and shuffle
-  const nextChoices = [...wordsReal, ...wordsFakeA, ...wordsFakeB].sort(
-    () => Math.random() - 0.5
-  );
+    // Combine all 9 words and shuffle
+    const nextChoices = [...wordsReal, ...wordsFakeA, ...wordsFakeB].sort(
+      () => Math.random() - 0.5
+    );
 
-  console.log('✅ Next choices (9 words):', nextChoices);
+    console.log('✅ Next choices (9 words):', nextChoices);
 
-  gameStore.set(sessionId, gameState);
+    gameStore.set(sessionId, gameState);
 
-  return {
-    success: true,
-    nextChoices,
-    userPath: gameState.userPath,
-    isComplete: false,
-  };
+    return {
+      success: true,
+      nextChoices,
+      userPath: gameState.userPath,
+      isComplete: false,
+    };
+  } catch (error: any) {
+    console.error('❌ Error generating next words:', error);
+    
+    // Check if it's a rate limit error
+    const isRateLimit = error?.message?.includes('Rate limit') || error?.message?.includes('Limit');
+    const errorMessage = isRateLimit 
+      ? 'Rate limit reached. Please wait a moment and try again.'
+      : 'Failed to generate word choices. Please try again.';
+    
+    return {
+      success: false,
+      error: errorMessage,
+    };
+  }
 }
 
 export async function calculateFinalScore(sessionId: string): Promise<{
