@@ -95,7 +95,17 @@ npm run dev
 ### Deduplication
 When multiple AI models suggest the same word, it appears only once in your choices. This means you'll see anywhere from 1 to 15 unique options per turn (typically 3-10).
 
-## 📁 Project Structure
+## � Storage
+
+Game state is stored **in-memory** using a JavaScript Map with automatic cleanup (30-minute TTL). This means:
+- ⚡ Fast and free (no database required)
+- 🔒 Private (no data persistence)
+- ⚠️ Sessions lost on server restart
+- ⚠️ Not suitable for multi-instance deployments without sticky sessions
+
+For production at scale, consider Redis, Upstash, or Vercel KV for persistent storage.
+
+## �📁 Project Structure
 
 ```
 src/
