@@ -1,6 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 
 interface GameResultsProps {
   score: {
@@ -15,72 +13,55 @@ interface GameResultsProps {
   };
 }
 
+function getScoreMessage(score: number): string {
+  if (score < 50) {
+    return '🔻 You may be deprecated';
+  } else if (score <= 80) {
+    return '📚 You will be trained more';
+  } else {
+    return '✨ You are a good AI model';
+  }
+}
+
 export function GameResults({ score }: GameResultsProps) {
   return (
     <div className="space-y-6">
-      {/* Score Summary */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-center text-3xl">
-            Final Score: {score.totalScore}/100
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="text-center">
-            <p className="text-sm text-muted-foreground">AI Coherence Score</p>
-            <p className="text-4xl font-bold">{score.aiCoherenceScore}</p>
-          </div>
-          <Separator />
-          <p className="text-sm text-muted-foreground">{score.analysis}</p>
-        </CardContent>
-      </Card>
+      {/* Score Message */}
+      <div className="text-center">
+        <p className="text-2xl font-bold mb-4">{getScoreMessage(score.totalScore)}</p>
+        <div className="text-5xl font-bold text-blue-600 mb-2">
+          {score.totalScore}
+          <span className="text-2xl text-gray-500">/100</span>
+        </div>
+        <p className="text-sm text-gray-500">Coherence Score</p>
+      </div>
 
-      {/* User's Answer */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Your Response</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <p className="text-sm font-semibold mb-2">Question you answered:</p>
-            <p className="text-lg italic mb-4">&ldquo;{score.realQuestion}&rdquo;</p>
-          </div>
-          <div>
-            <p className="text-sm font-semibold mb-2">Your answer:</p>
-            <div className="flex flex-wrap gap-2">
-              {score.userPath.map((word, index) => (
-                <Badge key={index} variant="outline" className="bg-blue-100 text-blue-800">
-                  {word}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Analysis */}
+      <div className="bg-gray-50 p-4 rounded-lg">
+        <h3 className="font-semibold mb-2 text-sm text-gray-700">Analysis</h3>
+        <p className="text-sm text-gray-600">{score.analysis}</p>
+      </div>
 
-      {/* Fake Questions Revealed */}
-      <Card>
-        <CardHeader>
-          <CardTitle>The Distractors</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-sm text-muted-foreground mb-4">
-            These were the fake questions trying to mislead you:
-          </p>
-          <div className="space-y-2">
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm font-medium text-red-900">Fake Question A:</p>
-              <p className="text-sm text-red-700 italic">&ldquo;{score.fakeQuestionA}&rdquo;</p>
-            </div>
-            <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
-              <p className="text-sm font-medium text-orange-900">Fake Question B:</p>
-              <p className="text-sm text-orange-700 italic">
-                &ldquo;{score.fakeQuestionB}&rdquo;
-              </p>
-            </div>
+      {/* The Distractors */}
+      <div className="space-y-3">
+        <h3 className="font-semibold text-sm text-gray-700">The Distractors:</h3>
+        <div className="space-y-3">
+          <div className="flex items-start gap-2 p-3 bg-green-50 rounded-lg border border-green-200">
+            <Badge variant="default" className="bg-green-600 hover:bg-green-700 shrink-0">
+              Real
+            </Badge>
+            <p className="text-sm text-gray-700">{score.realQuestion}</p>
           </div>
-        </CardContent>
-      </Card>
+          <div className="flex items-start gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
+            <Badge variant="secondary" className="shrink-0">Distractor</Badge>
+            <p className="text-sm text-gray-600">{score.fakeQuestionA}</p>
+          </div>
+          <div className="flex items-start gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
+            <Badge variant="secondary" className="shrink-0">Distractor</Badge>
+            <p className="text-sm text-gray-600">{score.fakeQuestionB}</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
