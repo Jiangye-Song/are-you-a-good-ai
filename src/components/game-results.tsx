@@ -33,7 +33,7 @@ export function GameResults({ score }: GameResultsProps) {
           {score.totalScore}
           <span className="text-2xl text-gray-500">/100</span>
         </div>
-        <p className="text-sm text-gray-500">Coherence Score</p>
+        <p className="text-sm text-gray-500">Your Score</p>
       </div>
 
       {/* Analysis */}
