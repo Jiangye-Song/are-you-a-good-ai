@@ -35,6 +35,7 @@ export async function startNewGame(): Promise<{
     fakeQuestionA,
     fakeQuestionB,
     userPath: [],
+    allGeneratedWords: new Set<string>(),
     currentTurn: 0,
     isComplete: false,
     createdAt: new Date(),
@@ -53,12 +54,14 @@ export async function startNewGame(): Promise<{
     getNextWord(fakeQuestionB, [], maxLength),
   ]);
 
-  // Combine all 9 words and shuffle
-  const initialChoices = [...wordsReal, ...wordsFakeA, ...wordsFakeB].sort(
-    () => Math.random() - 0.5
-  );
+  // Use Set to combine and deduplicate words
+  const uniqueWordsSet = new Set([...wordsReal, ...wordsFakeA, ...wordsFakeB]);
+  const initialChoices = Array.from(uniqueWordsSet).sort(() => Math.random() - 0.5);
 
-  console.log('✅ Initial choices (9 words):', initialChoices);
+  // Add all words to the game state Set
+  initialChoices.forEach(word => gameState.allGeneratedWords.add(word));
+
+  console.log('✅ Initial choices (unique words):', initialChoices);
 
   return {
     sessionId,
@@ -134,12 +137,14 @@ export async function selectWord(
       getNextWord(gameState.fakeQuestionB, gameState.userPath, maxLength),
     ]);
 
-    // Combine all 9 words and shuffle
-    const nextChoices = [...wordsReal, ...wordsFakeA, ...wordsFakeB].sort(
-      () => Math.random() - 0.5
-    );
+    // Use Set to combine and deduplicate words
+    const uniqueWordsSet = new Set([...wordsReal, ...wordsFakeA, ...wordsFakeB]);
+    const nextChoices = Array.from(uniqueWordsSet).sort(() => Math.random() - 0.5);
 
-    console.log('✅ Next choices (9 words):', nextChoices);
+    // Add all words to the Set
+    nextChoices.forEach(word => gameState.allGeneratedWords.add(word));
+
+    console.log('✅ Next choices (unique words):', nextChoices);
 
     gameStore.set(sessionId, gameState);
 
@@ -193,19 +198,19 @@ export async function calculateFinalScore(sessionId: string): Promise<{
   console.log('User answer:', gameState.userPath.join(' '));
 
   // Get AI coherence score
-  const { coherenceScore, analysis } = await scoreUserPath(
+  const { score, analysis } = await scoreUserPath(
     gameState.realQuestion,
     gameState.userPath
   );
 
-  console.log('🎯 Coherence Score:', coherenceScore);
+  console.log('🎯 Score:', score);
   console.log('📝 Analysis:', analysis);
 
   return {
     success: true,
     score: {
-      aiCoherenceScore: coherenceScore,
-      totalScore: coherenceScore, // Using only coherence score now
+      aiCoherenceScore: score,
+      totalScore: score, // Using score now
       analysis,
       userPath: gameState.userPath,
       userAnswer: gameState.userPath.join(' '),

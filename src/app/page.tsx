@@ -88,8 +88,8 @@ export default function Home() {
       // Map reaction type to message
       const reactionMessages = {
         appreciation: ['Thanks!', 'Great!', 'Perfect!', 'Awesome!', 'Nice!'],
-        dislike: ['Hmm...', 'Not sure about that...', 'Really?', 'Ugh...', 'Meh...'],
-        confused: ['Wait, what?', 'Huh?', 'Confused...', 'What??', 'Umm...'],
+        dislike: ['Bruh', 'Huh?', 'Really?', 'Ugh...', 'Meh...'],
+        confused: ['Wait, what?', 'Not sure about that...', 'Wdym?', 'What??', 'Umm...'],
       };
       const messages = reactionMessages[reaction];
       setUserReaction(messages[Math.floor(Math.random() * messages.length)]);

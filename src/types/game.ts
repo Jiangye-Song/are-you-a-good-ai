@@ -4,6 +4,7 @@ export interface GameState {
   fakeQuestionA: string;
   fakeQuestionB: string;
   userPath: string[];
+  allGeneratedWords: Set<string>;
   currentTurn: number;
   isComplete: boolean;
   score?: GameScore;

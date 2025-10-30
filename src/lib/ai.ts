@@ -68,9 +68,9 @@ IMPORTANT RULES:
 - The human only has ${wordsRemaining} words remaining! Keep the response concise and direct, DO NOT repeat the question!
 - DO NOT use filler phrases like "Here's", "Below is", "An example of", etc. - get straight to the point
 
-Respond with EXACTLY 3 words separated by commas.
-Format: word1, word2, word3
-Example: "the, a, some" or "help, assist, today"
+Respond with 1 - 5 words separated by pipes (|), punctuation can be included.
+Format: word1 | word2 | word3
+Example: "the | additionally, | some" or "help | assist | today."
 
 ${contextPrompt}
 
@@ -89,23 +89,23 @@ ${contextPrompt}
 
   console.log('✅ LLM RESPONSE:', text);
   
-  // Parse the response to get 3 words
+  // Parse the response to get up to 5 words
   const words = text
     .trim()
-    .split(',')
+    .split('|')
     .map(w => w.trim().split(/\s+/)[0].replace(/[.,!?;:"]$/g, ''))
     .filter(w => w.length > 0 && w !== '[end]')
-    .slice(0, 3);
+    .slice(0, 5);
   
-  // Ensure we have exactly 3 options (use common words if needed)
+  // Ensure we have at least 1 option (use common words if needed)
   const fallbacks = ['and', 'the', 'to', 'a', 'in', 'for', 'with', 'on', 'of'];
   let fallbackIndex = 0;
-  while (words.length < 3) {
+  while (words.length < 1) {
     words.push(fallbacks[fallbackIndex % fallbacks.length]);
     fallbackIndex++;
   }
   
-  console.log(`  → 3 options for "${question.substring(0, 40)}...": [${words.join(', ')}]`);
+  console.log(`  → ${words.length} options for "${question.substring(0, 40)}...": [${words.join(', ')}]`);
   console.log('');
   
   return words;
@@ -115,7 +115,7 @@ export async function scoreUserPath(
   question: string,
   userPath: string[]
 ): Promise<{
-  coherenceScore: number;
+  score: number;
   analysis: string;
 }> {
   const userAnswer = userPath.join(' ');
@@ -128,14 +128,14 @@ Answer: "${userAnswer}"
 The user mimicked a simple AI response to the question with a word limit of ${maxWords} words
 
 Rate the user's answer on:
-1. Coherence (0-100): How well-formed and logical is it?
-2. Relevance (0-100): How well does it answer the question?
+1. Is that related to the topic?
+2. Did that answer the question?
 
-Keep in mind that word limit limits the upper bound of respond, so do not be too strict!
+Keep in mind that word limit limits the upper bound of respond, so do not be too strict on detail & depth!
 
 Provide your response as JSON:
 {
-  "coherenceScore": number (0-100),
+  "score": number (0-100),
   "analysis": "Brief analysis explaining the score"
 }`;
 
