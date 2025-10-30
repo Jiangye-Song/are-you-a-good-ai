@@ -47,17 +47,17 @@ export function GameResults({ score }: GameResultsProps) {
         <h3 className="font-semibold text-sm text-gray-700">The Distractors:</h3>
         <div className="space-y-3">
           <div className="flex items-start gap-2 p-3 bg-green-50 rounded-lg border border-green-200">
-            <Badge variant="default" className="bg-green-600 hover:bg-green-700 shrink-0">
+            <Badge variant="default" className="bg-green-600 shrink-0 w-[75px]">
               Real
             </Badge>
             <p className="text-sm text-gray-700">{score.realQuestion}</p>
           </div>
           <div className="flex items-start gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
-            <Badge variant="secondary" className="shrink-0">Distractor</Badge>
+            <Badge variant="outline" className="shrink-0 w-[75px]">Distractor</Badge>
             <p className="text-sm text-gray-600">{score.fakeQuestionA}</p>
           </div>
           <div className="flex items-start gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
-            <Badge variant="secondary" className="shrink-0">Distractor</Badge>
+            <Badge variant="outline" className="shrink-0 w-[75px]">Distractor</Badge>
             <p className="text-sm text-gray-600">{score.fakeQuestionB}</p>
           </div>
         </div>
