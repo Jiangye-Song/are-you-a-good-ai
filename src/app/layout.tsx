@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Are you a good AI?",
+  title: "Are You a Good Generative AI Model?",
   description: "A tiny game developed by Jiangye Song.",
 };
 

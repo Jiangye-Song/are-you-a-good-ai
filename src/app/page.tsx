@@ -155,7 +155,7 @@ export default function Home() {
       <div className="min-h-screen bg-white flex flex-col">
         <header className="border-b px-4 py-3 bg-white sticky top-0 z-10">
           <div className="max-w-4xl mx-auto">
-            <h1 className="text-lg font-semibold">Are You a Good AI?</h1>
+            <h1 className="text-lg font-semibold">Are You a Good Generative AI Model?</h1>
           </div>
         </header>
         <div className="flex-1 overflow-y-auto">
@@ -185,7 +185,7 @@ export default function Home() {
         {/* Header */}
         <header className="border-b px-4 py-3 bg-white sticky top-0 z-10 shadow-sm">
           <div className="max-w-4xl mx-auto flex items-center justify-between">
-            <h1 className="text-lg font-semibold">Are You a Good AI?</h1>
+            <h1 className="text-lg font-semibold">Are You a Good Generative AI Model?</h1>
             <Button onClick={initGame} variant="outline" size="sm">
               Play Again
             </Button>
@@ -226,7 +226,7 @@ export default function Home() {
       {/* Header */}
       <header className="border-b px-4 py-3 bg-white sticky top-0 z-10 shadow-sm">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <h1 className="text-lg font-semibold">Are You a Good AI?</h1>
+          <h1 className="text-lg font-semibold">Are You a Good Generative AI Model?</h1>
           <button
             onClick={() => setShowHelp(true)}
             className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-1.5"
@@ -259,7 +259,7 @@ export default function Home() {
             </div>
             <div className="px-6 py-4 space-y-4 text-sm">
               <div>
-                <h1 className="font-bold mb-2 text-base text-lg">Are you a good AI?</h1>
+                <h1 className="font-bold mb-2 text-base text-lg">Are You a Good Generative AI Model?</h1>
                 <p className="text-gray-600">
                   <i>🧪 A tiny game developed by <a href='https://jy-s.com'><u>Jiangye Song</u></a>.</i>
                 </p>

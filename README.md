@@ -1,4 +1,4 @@
-# Are You a Good AI?
+# Are You a Good Generative AI Model?
 
 A fun interactive game where you roleplay as an AI assistant! Three different AI models generate word suggestions for the same question - but only one question is real, and the other two are distractors. Can you build a coherent response by choosing the right words?
 
