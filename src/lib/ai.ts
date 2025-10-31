@@ -206,6 +206,7 @@ The user mimicked a simple AI response to the question with a word limit of ${ma
 Rate the user's answer on:
 1. Is that related to the topic?
 2. Did that answer the question briefly / in a high level?
+3. Is that correct?
 
 Keep in mind that word limit limits the upper bound of respond, so detail / depth / explaination is not a requirement and should not be considered when scoring!
 
@@ -232,9 +233,6 @@ Provide your response as JSON:
   // Clean markdown code blocks if present
   const cleanText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
   const result = JSON.parse(cleanText);
-  
-  // Boost score by 20 but cap at 100
-  result.score = Math.min(100, (result.score + Math.min(20, result.score * 0.5)));
   
   return result;
 }
