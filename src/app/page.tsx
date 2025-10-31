@@ -32,6 +32,7 @@ interface GameScore {
 }
 
 export default function Home() {
+  const maxWords = parseInt(process.env.NEXT_PUBLIC_MAX_PATH_LENGTH || '12', 10);
   const [phase, setPhase] = useState<GamePhase>('loading');
   const [sessionId, setSessionId] = useState<string>('');
   const [question, setQuestion] = useState<string>('');
@@ -113,7 +114,7 @@ export default function Home() {
 
     // Check if already at limit (isComplete)
     // In this case, we can directly finish the game
-    if (choices.length === 0 && userPath.length >= parseInt(process.env.NEXT_PUBLIC_MAX_PATH_LENGTH || '12', 10)) {
+    if (choices.length === 0 && userPath.length >= maxWords) {
       await finishGame(userPath);
       return;
     }
@@ -273,7 +274,7 @@ export default function Home() {
                 <h3 className="font-semibold mb-2 text-base">📝 How It Works</h3>
                 <ol className="text-gray-600 space-y-2 list-decimal list-inside">
                   <li>You'll see a question that needs an AI-style response</li>
-                  <li>Select words from the choices to build your answer (up to 12 words)</li>
+                  <li>Select words from the choices to build your answer (up to {maxWords} words)</li>
                   <li>Each word shows its probability score - higher is better!</li>
                   <li>Use the <strong>undo button (↶)</strong> to remove the last word</li>
                   <li>Click <strong>send (↑)</strong> when ready to submit</li>
