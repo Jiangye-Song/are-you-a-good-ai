@@ -41,6 +41,7 @@ export default function Home() {
   const [isSelecting, setIsSelecting] = useState(false);
   const [userReaction, setUserReaction] = useState<string>('');
   const [error, setError] = useState<string>('');
+  const [showHelp, setShowHelp] = useState(false);
 
   const initGame = useCallback(async () => {
     setPhase('loading');
@@ -109,6 +110,13 @@ export default function Home() {
 
   async function handleSubmit() {
     if (!userPath.length) return;
+    
+    // Check if already at limit (isComplete)
+    // In this case, we can directly finish the game
+    if (choices.length === 0 && userPath.length >= parseInt(process.env.NEXT_PUBLIC_MAX_PATH_LENGTH || '12', 10)) {
+      await finishGame(userPath);
+      return;
+    }
     
     // Mark game as complete without selecting another word
     const result = await selectWord(sessionId, '[SUBMIT]');
@@ -190,15 +198,11 @@ export default function Home() {
             <ChatMessage role="user" content={question} />
 
             {/* User's response */}
-            <ChatMessage role="assistant" content={userPath.join(' ')} />
+            <ChatMessage role="assistant" content={score.userAnswer} />
 
             {/* User reaction to their own response */}
             {userReaction && (
-              <div className="flex justify-end mb-4">
-                <div className="bg-gray-200 text-gray-700 rounded-2xl rounded-tr-sm px-4 py-2 text-sm max-w-[60%]">
-                  {userReaction}
-                </div>
-              </div>
+              <ChatMessage role="user" content={userReaction} />
             )}
 
             {/* Divider */}
@@ -222,8 +226,69 @@ export default function Home() {
       <header className="border-b px-4 py-3 bg-white sticky top-0 z-10 shadow-sm">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <h1 className="text-lg font-semibold">Are You a Good AI?</h1>
+          <button
+            onClick={() => setShowHelp(true)}
+            className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-1.5"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+              <line x1="12" y1="17" x2="12.01" y2="17" />
+            </svg>
+            Help
+          </button>
         </div>
       </header>
+
+      {/* Help Modal */}
+      {showHelp && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowHelp(false)}>
+          <div className="bg-white rounded-2xl max-w-lg w-full max-h-[80vh] overflow-y-auto shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
+              <h2 className="text-xl font-semibold">How to Play</h2>
+              <button
+                onClick={() => setShowHelp(false)}
+                className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+            <div className="px-6 py-4 space-y-4 text-sm">
+              <div>
+                <h3 className="font-semibold mb-2 text-base">🎮 Objective</h3>
+                <p className="text-gray-600">Roleplay as an AI assistant! Build a coherent response to a question by selecting words one at a time.</p>
+              </div>
+              
+              <div>
+                <h3 className="font-semibold mb-2 text-base">📝 How It Works</h3>
+                <ol className="text-gray-600 space-y-2 list-decimal list-inside">
+                  <li>You'll see a question that needs an AI-style response</li>
+                  <li>Select words from the choices to build your answer (up to 12 words)</li>
+                  <li>Each word shows its probability score - higher is better!</li>
+                  <li>Use the <strong>undo button (↶)</strong> to remove the last word</li>
+                  <li>Click <strong>send (↑)</strong> when ready to submit</li>
+                </ol>
+              </div>
+
+              <div>
+                <h3 className="font-semibold mb-2 text-base">🎯 The Twist</h3>
+                <p className="text-gray-600">Three AI models suggest words, but they're answering <em>different questions</em>! Only one question is real - the others are distractors trying to lead you astray.</p>
+              </div>
+            </div>
+            <div className="sticky bottom-0 bg-gray-50 px-6 py-4 border-t">
+              <button
+                onClick={() => setShowHelp(false)}
+                className="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+              >
+                Got it!
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Chat area */}
       <div className="flex-1 overflow-y-auto pb-4">

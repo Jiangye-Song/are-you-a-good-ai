@@ -7,7 +7,7 @@ const groq = createGroq({
   apiKey: process.env.GROQ_API_KEY,
 });
 
-const model = groq('llama-3.1-8b-instant');
+const model = groq('llama-3.3-70b-versatile');
 const scoringModel = model;
 
 // Native OpenAI client for logprobs (word suggestions only)
@@ -163,7 +163,7 @@ export async function getNextWord(
 
 export async function addPunctuation(userPath: string[]): Promise<string> {
   const userAnswer = userPath.join(' ');
-  const fullPrompt = `Add appropriate punctuation to this sentence to make it look more natural. DO NOT change any words, DO NOT add any words, DO NOT change word order. ONLY add punctuation marks (commas, periods, question marks, etc.).
+  const fullPrompt = `Add appropriate punctuation or concatinate words to make this sentence to make it look more natural. DO NOT change any words, DO NOT add any words, DO NOT change word order. ONLY add punctuation marks (commas, periods, question marks, etc.) If the sentence is imcomplete, just leave it.
 
 Original: "${userAnswer}"
 
@@ -234,7 +234,7 @@ Provide your response as JSON:
   const result = JSON.parse(cleanText);
   
   // Boost score by 20 but cap at 100
-  result.score = Math.min(100, (result.score * 1.5));
+  result.score = Math.min(100, (result.score + Math.min(20, result.score * 0.5)));
   
   return result;
 }
