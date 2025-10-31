@@ -89,11 +89,11 @@ export default function Home() {
 
   async function handleUndo() {
     if (!userPath.length) return;
-    
+
     try {
       setIsSelecting(true);
       const result = await undoLastWord(sessionId);
-      
+
       if (result.success) {
         setUserPath(result.userPath || []);
         setChoices(result.nextChoices || []);
@@ -110,17 +110,17 @@ export default function Home() {
 
   async function handleSubmit() {
     if (!userPath.length) return;
-    
+
     // Check if already at limit (isComplete)
     // In this case, we can directly finish the game
     if (choices.length === 0 && userPath.length >= parseInt(process.env.NEXT_PUBLIC_MAX_PATH_LENGTH || '12', 10)) {
       await finishGame(userPath);
       return;
     }
-    
+
     // Mark game as complete without selecting another word
     const result = await selectWord(sessionId, '[SUBMIT]');
-    
+
     if (result.success) {
       await finishGame(result.userPath || []);
     }
@@ -128,7 +128,7 @@ export default function Home() {
 
   async function finishGame(finalPath: string[]) {
     setPhase('scoring');
-    
+
     // Generate user reaction and calculate score in parallel
     const [reaction, scoreResult] = await Promise.all([
       generateUserReaction(finalPath.join(' '), true),
@@ -258,10 +258,17 @@ export default function Home() {
             </div>
             <div className="px-6 py-4 space-y-4 text-sm">
               <div>
+                <h1 className="font-bold mb-2 text-base text-lg">Are you a good AI?</h1>
+                <p className="text-gray-600">
+                  <i>🧪 A tiny game developed by <a href='https://jy-s.com'><u>Jiangye Song</u></a>.</i>
+                </p>
+              </div>
+
+              <div>
                 <h3 className="font-semibold mb-2 text-base">🎮 Objective</h3>
                 <p className="text-gray-600">Roleplay as an AI assistant! Build a coherent response to a question by selecting words one at a time.</p>
               </div>
-              
+
               <div>
                 <h3 className="font-semibold mb-2 text-base">📝 How It Works</h3>
                 <ol className="text-gray-600 space-y-2 list-decimal list-inside">
