@@ -16,14 +16,11 @@ export function getRandomRequestType(): string {
 
 export function generateDistinctPrompts(): [string, string, string] {
   const contexts = [
-    'a colleague about a project deadline',
-    'cook pasta perfectly',
-    'a weekend trip',
-    'a birthday party theme',
-    'todo list app',
-    'time management',
-    'calculates fibonacci numbers',
-    'my morning routine',
+    'Natural world facts',
+    'Earth and places',
+    'Terminology explaination',
+    'Software recommendation',
+    'General common knowledge'
   ];
 
   const shuffled = [...contexts].sort(() => Math.random() - 0.5);

@@ -27,7 +27,7 @@ A fun interactive game where you roleplay as an AI assistant! Three different AI
 - **TypeScript** - Type-safe development
 - **Tailwind CSS 4** - Modern styling
 - **shadcn/ui** - Beautiful UI components
-- **Groq AI** - Fast LLM inference with Llama 3.1
+- **OpenAI GPT-4o-mini** - Fast LLM with logprobs for word suggestions
 - **Vercel AI SDK** - AI integration utilities
 
 ## 📦 Getting Started
@@ -36,7 +36,7 @@ A fun interactive game where you roleplay as an AI assistant! Three different AI
 
 - Node.js 20.9+ (Node.js 18 is no longer supported in Next.js 16)
 - pnpm, npm, or yarn
-- Groq API key (get one free at [console.groq.com](https://console.groq.com))
+- OpenAI API key (get one at [platform.openai.com](https://platform.openai.com))
 
 ### Installation
 
@@ -60,8 +60,8 @@ npm install
 
 4. Add your configuration to `.env.local`:
 ```env
-# Required: Groq API Key
-GROQ_API_KEY=your_api_key_here
+# Required: OpenAI API Key
+OPENAI_API_KEY=your_api_key_here
 
 # Optional: Game configuration
 NEXT_PUBLIC_MAX_PATH_LENGTH=12
@@ -79,10 +79,11 @@ npm run dev
 ## 🎯 Game Mechanics
 
 ### Word Generation
-- Each AI model suggests 1-5 words per turn
+- Uses OpenAI's logprobs feature to get token probabilities
+- Requests max_tokens=1 with top_logprobs=5 for each turn
+- Returns the top 5 most likely next tokens based on probability
 - Words are generated based on the current conversation context
-- The AI knows how many words are remaining
-- Filler phrases are explicitly discouraged
+- More deterministic and contextually accurate than prompt-based generation
 
 ### Scoring System
 - **Coherence Score** (100 points max): How well-formed and logical your response is
@@ -137,9 +138,10 @@ src/
 
 ### AI Models
 
-- **Generation**: llama-3.1-8b-instant (~500+ tokens/sec, cost-effective)
-- **Scoring**: llama-3.1-8b-instant (fast scoring)
-- Easily swap to llama-3.3-70b-versatile for higher quality in `src/lib/ai.ts`
+- **Generation**: gpt-4o-mini with logprobs (fast, accurate, cost-effective)
+- **Scoring**: gpt-4o-mini (consistent quality)
+- **Logprobs**: top_logprobs=5 returns the 5 most probable next tokens
+- Can be upgraded to gpt-4o for higher quality in `src/lib/ai.ts`
 
 ## 🚢 Deployment
 
@@ -175,10 +177,15 @@ Modify Tailwind colors in `src/app/globals.css`
 ## 🐛 Troubleshooting
 
 ### Rate Limit Errors
-- Groq free tier: 6000 tokens/minute
+- OpenAI free tier has request limits
 - Error snackbar will appear with retry message
 - Wait a few seconds and try again
-- Consider upgrading to Dev Tier for higher limits
+- Consider upgrading your OpenAI plan for higher limits
+
+### Logprobs Not Working
+- Ensure you're using a model that supports logprobs (gpt-4o-mini, gpt-4o, gpt-3.5-turbo)
+- Check that your API key has proper permissions
+- Logprobs feature requires max_tokens >= 1
 
 ### TypeScript Errors
 Run type checking:
@@ -204,13 +211,15 @@ MIT License - feel free to use this project for learning or building your own ga
 
 - Built with [Next.js](https://nextjs.org) and [Vercel AI SDK](https://sdk.vercel.ai/)
 - UI components from [shadcn/ui](https://ui.shadcn.com/)
-- AI powered by [Groq](https://groq.com/) and Llama models
+- AI powered by [OpenAI](https://openai.com/) GPT-4o-mini with logprobs
+- Logprobs technique inspired by [OpenAI Cookbook](https://cookbook.openai.com/examples/using_logprobs)
 - Inspired by the Turing Test concept
 
 ## 🔗 Links
 
 - [Next.js Documentation](https://nextjs.org/docs)
-- [Groq Documentation](https://console.groq.com/docs)
+- [OpenAI Documentation](https://platform.openai.com/docs)
+- [OpenAI Logprobs Guide](https://cookbook.openai.com/examples/using_logprobs)
 - [Vercel AI SDK](https://sdk.vercel.ai/)
 - [shadcn/ui](https://ui.shadcn.com/)
 

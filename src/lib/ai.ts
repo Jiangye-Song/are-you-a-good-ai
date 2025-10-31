@@ -1,16 +1,19 @@
 import { createGroq } from '@ai-sdk/groq';
 import { generateText } from 'ai';
+import OpenAI from 'openai';
 
+// Use Groq/Llama 8B for question generation and scoring
 const groq = createGroq({
   apiKey: process.env.GROQ_API_KEY,
 });
 
-// Use Llama 3.1 8B for fast, cost-effective generation
 const model = groq('llama-3.1-8b-instant');
-
-// Use Llama 3.3 70B for higher quality scoring
-// const scoringModel = groq('llama-3.3-70b-versatile');
 const scoringModel = model;
+
+// Native OpenAI client for logprobs (word suggestions only)
+const openaiClient = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 export async function generateQuestion(prompt: string): Promise<string> {
   const maxWords = parseInt(process.env.NEXT_PUBLIC_MAX_PATH_LENGTH || '12', 10);
@@ -21,8 +24,8 @@ Topic: "${prompt}"
 Generate ONLY the user question (not the answer). Make it sound natural, like a real person asking.
 
 Examples:
-- "Can you help me plan a weekend getaway?"
-- "What's the best way to cook pasta?"
+- "Who was the first person to walk on the moon?"
+- "Why does a balloon filled with helium rise?"
 - "How do I improve my time management skills?"
 
 Your question:`;
@@ -50,65 +53,109 @@ export async function getNextWord(
   question: string,
   currentPath: string[],
   maxWords: number = 12
-): Promise<string[]> {
+): Promise<{ word: string; probability: number }[]> {
   const currentText = currentPath.join(' ');
-  const wordsRemaining = maxWords - currentPath.length;
   
   // Build context based on whether we have a current path
   const contextPrompt = currentPath.length === 0 
-    ? `You are starting a new response. What are the 3 most likely FIRST WORDS to begin answering this request?`
-    : `The current response: "${currentText} ______"\n\nWhat are the top 3 most likely NEXT WORDS that should come after "${currentText}"?`;
+    ? `question: "${question} answer within ${maxWords} words", response: "`
+    : `question: "${question} answer within ${maxWords} words", response: "${currentText}`;
   
-  const fullPrompt = `A human is role playing an AI and picking up the next word for THIS user request: "${question}"
+  console.log('\n🤖 PROMPT SENT TO OPENAI (with logprobs):');
+  console.log('━'.repeat(80));
+  console.log(contextPrompt);
+  console.log('━'.repeat(80));
+  
+  try {
+    const completion = await openaiClient.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'user', content: contextPrompt }
+      ],
+      max_tokens: 3, // Allow up to 3 tokens to get fuller words
+      temperature: 0.9,
+      logprobs: true,
+      top_logprobs: 5,
+    });
 
-IMPORTANT RULES:
-- There are other models doing the same thing with fake question! Try lead the human to select your keywords to make it related to your question!
-- Provide 3 DIFFERENT words that would naturally continue from where the response currently is
-- Each word should be distinct and make sense as the NEXT word in sequence
-- The human only has ${wordsRemaining} words remaining! Keep the response concise and direct, DO NOT repeat the question!
-- DO NOT use filler phrases like "Here's", "Below is", "An example of", etc. - get straight to the point
+    const choice = completion.choices[0];
+    const generatedToken = choice.message.content?.trim() || '';
+    
+    console.log('✅ Generated token:', generatedToken);
+    
+    // Extract top words from logprobs with their probabilities
+    const wordsWithProbs: { word: string; probability: number }[] = [];
+    
+    if (choice.logprobs?.content && choice.logprobs.content.length > 0) {
+      const tokenLogprobs = choice.logprobs.content[0];
+      if (tokenLogprobs.top_logprobs) {
+        console.log('📈 Top logprobs:');
+        // Get top 5 alternative tokens from first token position
+        for (const logprob of tokenLogprobs.top_logprobs) {
+          const token = logprob.token.trim();
+          // Remove punctuation from the token to get clean words
+          const word = token.replace(/[.,!?;:'"()]/g, '').trim();
+          const probability = Math.exp(logprob.logprob);
+          console.log(`  - "${token}" -> "${word}" (logprob: ${logprob.logprob.toFixed(2)}, prob: ${probability.toFixed(4)})`);
+          if (word.length > 0 && word !== '[end]' && !word.startsWith('<')) {
+            wordsWithProbs.push({ word, probability });
+          }
+        }
+      }
+    }
+    
+    // Fallback: use the generated token if no logprobs
+    if (wordsWithProbs.length === 0 && generatedToken.length > 0) {
+      wordsWithProbs.push({ word: generatedToken, probability: 1.0 });
+    }
+    
+    // Ensure we have at least 1 option (use common words if needed)
+    const fallbacks = ['and', 'the', 'to', 'a', 'in', 'for', 'with', 'on', 'of'];
+    let fallbackIndex = 0;
+    while (wordsWithProbs.length < 1) {
+      wordsWithProbs.push({ word: fallbacks[fallbackIndex % fallbacks.length], probability: 0.01 });
+      fallbackIndex++;
+    }
+    
+    console.log(`  → ${wordsWithProbs.length} options from logprobs: [${wordsWithProbs.map(w => `${w.word}(${w.probability.toFixed(3)})`).join(', ')}]`);
+    console.log('');
+    
+    return wordsWithProbs.slice(0, 5); // Return up to 5 words with probabilities
+  } catch (error) {
+    console.error('Error calling OpenAI:', error);
+    // Return fallback words on error
+    return [
+      { word: 'the', probability: 0.75 },
+      { word: 'a', probability: 0.75 },
+      { word: 'to', probability: 0.75 },
+    ];
+  }
+}
 
-Respond with 1 - 5 words separated by pipes (|), punctuation can be included.
-Format: word1 | word2 | word3
-Example: "the | additionally, | some" or "help | assist | today."
+export async function addPunctuation(userPath: string[]): Promise<string> {
+  const userAnswer = userPath.join(' ');
+  const fullPrompt = `Add appropriate punctuation to this sentence to make it look more natural. DO NOT change any words, DO NOT add any words, DO NOT change word order. ONLY add punctuation marks (commas, periods, question marks, etc.).
 
-${contextPrompt}
+Original: "${userAnswer}"
 
-`;
+Return ONLY the sentence with punctuation added, nothing else.`;
 
-  console.log('\n🤖 PROMPT SENT TO LLM:');
+  console.log('\n✍️ ADDING PUNCTUATION:');
   console.log('━'.repeat(80));
   console.log(fullPrompt);
   console.log('━'.repeat(80));
-  
+
   const { text } = await generateText({
-    model,
+    model: scoringModel,
     prompt: fullPrompt,
-    temperature: 0.9,
+    temperature: 0.3,
   });
 
-  console.log('✅ LLM RESPONSE:', text);
-  
-  // Parse the response to get up to 5 words
-  const words = text
-    .trim()
-    .split('|')
-    .map(w => w.trim().split(/\s+/)[0].replace(/[.,!?;:"]$/g, ''))
-    .filter(w => w.length > 0 && w !== '[end]')
-    .slice(0, 5);
-  
-  // Ensure we have at least 1 option (use common words if needed)
-  const fallbacks = ['and', 'the', 'to', 'a', 'in', 'for', 'with', 'on', 'of'];
-  let fallbackIndex = 0;
-  while (words.length < 1) {
-    words.push(fallbacks[fallbackIndex % fallbacks.length]);
-    fallbackIndex++;
-  }
-  
-  console.log(`  → ${words.length} options for "${question.substring(0, 40)}...": [${words.join(', ')}]`);
+  const punctuated = text.trim().replace(/^["']|["']$/g, '');
+  console.log('✅ LLM RESPONSE:', punctuated);
   console.log('');
-  
-  return words;
+
+  return punctuated;
 }
 
 export async function scoreUserPath(
@@ -129,7 +176,7 @@ The user mimicked a simple AI response to the question with a word limit of ${ma
 
 Rate the user's answer on:
 1. Is that related to the topic?
-2. Did that answer the question?
+2. Did that answer the question briefly / in a high level?
 
 Keep in mind that word limit limits the upper bound of respond, so do not be too strict on detail & depth!
 
