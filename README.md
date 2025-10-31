@@ -5,19 +5,24 @@ A fun interactive game where you roleplay as an AI assistant! Three different AI
 ## 🎮 How to Play
 
 1. You'll see a question that needs an AI-style response
-2. Three AI models (answering different questions) suggest 1-5 words each
-3. Duplicate words are automatically collapsed into unique choices
-4. Select words one by one to build your response (up to 12 words)
+2. Three AI models (answering different questions) suggest words to continue your response
+3. Select words one by one to build your response (up to 12 words)
+4. Watch the loading skeleton while the next word suggestions are generated
 5. Click submit when ready, or let the game end at the word limit
 6. Get scored on how coherent and relevant your response is!
+7. See your "best steps" score showing how often you picked optimal words
 
 ## 🚀 Features
 
 - **Chat-style UI** - Modern interface similar to ChatGPT/Claude
-- **Dynamic word generation** - AI models suggest contextual next words
-- **Smart deduplication** - Duplicate suggestions collapse into unique choices
+- **Hybrid AI approach** - GPT-4o-mini with logprobs for word suggestions, Llama 8B for question generation and scoring
+- **Two-step word generation** - First token from GPT-4o-mini, continuation from Llama for natural words
+- **Probability tracking** - Each word choice shows its probability, tracks optimal vs suboptimal selections
+- **Best steps metric** - See how many optimal word choices you made (best steps / total steps)
 - **Real-time streaming** - Watch your response build word by word
-- **AI scoring** - Get feedback on coherence and relevance
+- **Loading states** - Skeleton UI shows while generating next word options
+- **AI scoring** - Get feedback on coherence and relevance (boosted by +20 for better experience)
+- **Punctuation enhancement** - Final answer gets natural punctuation added by AI
 - **Distractor reveal** - See all three questions at the end
 - **Word tracking** - View all unique words generated during the game
 
@@ -27,8 +32,10 @@ A fun interactive game where you roleplay as an AI assistant! Three different AI
 - **TypeScript** - Type-safe development
 - **Tailwind CSS 4** - Modern styling
 - **shadcn/ui** - Beautiful UI components
-- **OpenAI GPT-4o-mini** - Fast LLM with logprobs for word suggestions
-- **Vercel AI SDK** - AI integration utilities
+- **OpenAI GPT-4o-mini** - Fast LLM with logprobs for word probability tracking
+- **Groq Llama 3.1 8B Instant** - Question generation, word completion, punctuation, and scoring
+- **Vercel AI SDK** - AI integration utilities for Groq
+- **Native OpenAI SDK** - Direct API access for logprobs feature
 
 ## 📦 Getting Started
 
@@ -37,6 +44,7 @@ A fun interactive game where you roleplay as an AI assistant! Three different AI
 - Node.js 20.9+ (Node.js 18 is no longer supported in Next.js 16)
 - pnpm, npm, or yarn
 - OpenAI API key (get one at [platform.openai.com](https://platform.openai.com))
+- Groq API key (get one at [console.groq.com](https://console.groq.com))
 
 ### Installation
 
@@ -60,8 +68,11 @@ npm install
 
 4. Add your configuration to `.env.local`:
 ```env
-# Required: OpenAI API Key
-OPENAI_API_KEY=your_api_key_here
+# Required: OpenAI API Key (for word suggestions with logprobs)
+OPENAI_API_KEY=your_openai_api_key_here
+
+# Required: Groq API Key (for question generation, word completion, and scoring)
+GROQ_API_KEY=your_groq_api_key_here
 
 # Optional: Game configuration
 NEXT_PUBLIC_MAX_PATH_LENGTH=12
@@ -78,23 +89,63 @@ npm run dev
 
 ## 🎯 Game Mechanics
 
-### Word Generation
-- Uses OpenAI's logprobs feature to get token probabilities
-- Requests max_tokens=1 with top_logprobs=5 for each turn
-- Returns the top 5 most likely next tokens based on probability
-- Words are generated based on the current conversation context
-- More deterministic and contextually accurate than prompt-based generation
+### Word Generation (Hybrid Two-Step Approach)
+
+**Step 1: Get First Token Probabilities (OpenAI GPT-4o-mini)**
+- Uses OpenAI's logprobs feature with `max_tokens=1, top_logprobs=5`
+- Returns 5 most probable first tokens with their probability scores
+- Each token gets a probability value (e.g., 0.7491 for "The", 0.1671 for "A")
+
+**Step 2: Complete Words Naturally (Groq Llama 3.1 8B)**
+- For each first token, Llama generates a natural continuation
+- Batch processing: all 5 tokens sent in one request to reduce API calls
+- Extracts first complete word from each continuation
+- Probability from Step 1 is preserved for tracking
+
+**Word Filtering:**
+- Removes single letters (except "I" and "A")
+- Filters out pure numbers and punctuation tokens
+- Validates minimum word length and common word patterns
+- Ensures at least 1 valid option per turn
+
+**Why This Approach?**
+- GPT-4o-mini logprobs provide accurate probability distributions
+- Llama completes tokens into natural, well-formed words
+- Avoids concatenation issues (like "Dolphinsolphins" from naive approaches)
+- Reduces API calls while maintaining quality
+
+### Probability Tracking & Best Steps
+
+Each word choice has a probability from 0 to 1 (displayed as percentage). The game tracks:
+
+- **Total Steps**: Number of words you selected
+- **Best Steps Score**: Cumulative quality of your choices
+  - Perfect choice (highest probability): +1.0 to score
+  - Suboptimal choice: +1.0 - (max_prob - your_prob) to score
+  - Example: If best word has 0.80 prob and you pick 0.60 prob word, you get +0.80 points
+
+**Display**: "Best Steps: 8.75 / 10" means you made 10 choices with 87.5% optimality
 
 ### Scoring System
-- **Coherence Score** (100 points max): How well-formed and logical your response is
+
+- **Coherence Score** (0-100): How well-formed and logical your response is
+- **Score Boost**: +20 points added automatically (capped at 100) for better user experience
+- **Punctuation Enhancement**: AI adds natural punctuation before scoring
 - **Analysis**: AI-generated feedback explaining your score
 - **Performance tiers**:
   - 0-49: "🔻 You may be deprecated"
   - 50-80: "📚 You will be trained more"
   - 81-100: "✨ You are a good AI model"
 
-### Deduplication
-When multiple AI models suggest the same word, it appears only once in your choices. This means you'll see anywhere from 1 to 15 unique options per turn (typically 3-10).
+### Questions & Distractors
+
+- Three questions are generated per game:
+  1. **Real Question**: The actual question you're answering
+  2. **Fake Question A**: First distractor
+  3. **Fake Question B**: Second distractor
+- Each question generates its own word suggestions
+- Word choices are mixed together (with source tracking for probability)
+- Distractor words get probability = 0 (always suboptimal choices)
 
 ## � Storage
 
@@ -138,10 +189,13 @@ src/
 
 ### AI Models
 
-- **Generation**: gpt-4o-mini with logprobs (fast, accurate, cost-effective)
-- **Scoring**: gpt-4o-mini (consistent quality)
+- **Question Generation**: Llama 3.1 8B Instant via Groq
+- **Word Suggestions (Step 1)**: GPT-4o-mini with logprobs (probability tracking)
+- **Word Completion (Step 2)**: Llama 3.1 8B Instant via Groq
+- **Punctuation**: Llama 3.1 8B Instant via Groq
+- **Scoring**: Llama 3.1 8B Instant via Groq (with +20 boost applied)
 - **Logprobs**: top_logprobs=5 returns the 5 most probable next tokens
-- Can be upgraded to gpt-4o for higher quality in `src/lib/ai.ts`
+- Models can be configured in `src/lib/ai.ts`
 
 ## 🚢 Deployment
 
@@ -177,15 +231,33 @@ Modify Tailwind colors in `src/app/globals.css`
 ## 🐛 Troubleshooting
 
 ### Rate Limit Errors
-- OpenAI free tier has request limits
-- Error snackbar will appear with retry message
-- Wait a few seconds and try again
+
+**OpenAI:**
+- Free tier has request limits
 - Consider upgrading your OpenAI plan for higher limits
+
+**Groq:**
+- Free tier: 6000 tokens/minute for Llama 3.1 8B
+- Batch word completion reduces API calls (1 call per turn instead of 5)
+- Wait 1 second if rate limited, then retry
+- Upgrade to Dev Tier at [console.groq.com/settings/billing](https://console.groq.com/settings/billing)
+
+### Word Quality Issues
+
+If you see incomplete or malformed words:
+- Check that Llama is returning proper continuations
+- Verify the batch prompt format in `getNextWord()` function
+- First word extraction logic is in place (splits on spaces, takes first word)
 
 ### Logprobs Not Working
 - Ensure you're using a model that supports logprobs (gpt-4o-mini, gpt-4o, gpt-3.5-turbo)
-- Check that your API key has proper permissions
+- Check that your OpenAI API key has proper permissions
 - Logprobs feature requires max_tokens >= 1
+
+### Best Steps Not Showing
+- Verify GameState includes `bestSteps` and `totalSteps` fields
+- Check WordChoiceWithScore interface has probability field
+- Ensure probability calculation happens in selectWord action
 
 ### TypeScript Errors
 Run type checking:
@@ -211,8 +283,11 @@ MIT License - feel free to use this project for learning or building your own ga
 
 - Built with [Next.js](https://nextjs.org) and [Vercel AI SDK](https://sdk.vercel.ai/)
 - UI components from [shadcn/ui](https://ui.shadcn.com/)
-- AI powered by [OpenAI](https://openai.com/) GPT-4o-mini with logprobs
+- AI powered by:
+  - [OpenAI](https://openai.com/) GPT-4o-mini with logprobs for probability tracking
+  - [Groq](https://groq.com/) Llama 3.1 8B Instant for fast question generation and scoring
 - Logprobs technique inspired by [OpenAI Cookbook](https://cookbook.openai.com/examples/using_logprobs)
+- Hybrid AI approach combines strengths of both providers
 - Inspired by the Turing Test concept
 
 ## 🔗 Links
@@ -220,6 +295,7 @@ MIT License - feel free to use this project for learning or building your own ga
 - [Next.js Documentation](https://nextjs.org/docs)
 - [OpenAI Documentation](https://platform.openai.com/docs)
 - [OpenAI Logprobs Guide](https://cookbook.openai.com/examples/using_logprobs)
+- [Groq Documentation](https://console.groq.com/docs)
 - [Vercel AI SDK](https://sdk.vercel.ai/)
 - [shadcn/ui](https://ui.shadcn.com/)
 

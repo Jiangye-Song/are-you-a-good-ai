@@ -16,10 +16,9 @@ export function getRandomRequestType(): string {
 
 export function generateDistinctPrompts(): [string, string, string] {
   const contexts = [
-    'Natural world facts',
-    'Earth and places',
-    'Terminology explaination',
-    'Software recommendation',
+    'Casual logic / concept',
+    'Ask explaination for an abbriviation',
+    'Everyday facts',
     'General common knowledge'
   ];
 

@@ -10,6 +10,8 @@ interface GameResultsProps {
     realQuestion: string;
     fakeQuestionA: string;
     fakeQuestionB: string;
+    bestSteps: number;
+    totalSteps: number;
   };
 }
 
@@ -34,6 +36,16 @@ export function GameResults({ score }: GameResultsProps) {
           <span className="text-2xl text-gray-500">/100</span>
         </div>
         <p className="text-sm text-gray-500">Your Score</p>
+        
+        {/* Best Steps Counter */}
+        <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+          <p className="text-sm text-gray-600">
+            Best Steps: <span className="font-semibold text-blue-700">{score.bestSteps.toFixed(2)}</span> / {score.totalSteps}
+          </p>
+          <p className="text-xs text-gray-500 mt-1">
+            {((score.bestSteps / score.totalSteps) * 100).toFixed(1)}% optimal choices
+          </p>
+        </div>
       </div>
 
       {/* Analysis */}

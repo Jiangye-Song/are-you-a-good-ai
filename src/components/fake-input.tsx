@@ -7,16 +7,31 @@ interface FakeInputProps {
   onSubmit: () => void;
   disabled?: boolean;
   currentWordCount?: number;
+  isSelecting?: boolean;
 }
 
-export function FakeInput({ currentText, choices, onSelectWord, onSubmit, disabled, currentWordCount = 0 }: FakeInputProps) {
+export function FakeInput({ currentText, choices, onSelectWord, onSubmit, disabled, currentWordCount = 0, isSelecting = false }: FakeInputProps) {
   const maxWords = parseInt(process.env.NEXT_PUBLIC_MAX_PATH_LENGTH || '12', 10);
   const remainingWords = maxWords - currentWordCount;
   
   return (
-    <div className="border-t bg-white sticky bottom-0">
+    <div className="border-t bg-white sticky bottom-0 relative">
+      {/* Loading overlay with skeleton style */}
+      {isSelecting && (
+        <div className="border-t bg-gray-50 px-4 py-3">
+          <div className="max-w-4xl mx-auto">
+            <div className="h-4 w-32 bg-gray-200 rounded mb-2 animate-pulse" />
+            <div className="grid grid-cols-3 gap-2">
+              {Array.from({ length: 9 }).map((_, i) => (
+                <div key={i} className="h-10 bg-gray-200 rounded-lg animate-pulse" />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Word choices - shown above input */}
-      {choices.length > 0 && !disabled && (
+      {choices.length > 0 && !disabled && !isSelecting && (
         <div className="border-b bg-gray-50 px-4 py-3">
           <div className="max-w-4xl mx-auto">
             <p className="text-xs text-gray-500 mb-2 font-medium">

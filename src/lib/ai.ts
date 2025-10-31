@@ -58,67 +58,115 @@ export async function getNextWord(
   
   // Build context based on whether we have a current path
   const contextPrompt = currentPath.length === 0 
-    ? `question: "${question} answer within ${maxWords} words", response: "`
-    : `question: "${question} answer within ${maxWords} words", response: "${currentText}`;
+    ? `question: "${question} answer within ${maxWords} words, NEVER respond with a single word, character, or partial sentence.", response: "`
+    : `question: "${question} answer within ${maxWords} words, NEVER respond with a single word, character, or partial sentence.", response: "${currentText}`;
   
-  console.log('\n🤖 PROMPT SENT TO OPENAI (with logprobs):');
+  console.log('\n🤖 STEP 1: Get top 5 first-token alternatives');
   console.log('━'.repeat(80));
   console.log(contextPrompt);
   console.log('━'.repeat(80));
   
   try {
-    const completion = await openaiClient.chat.completions.create({
+    // Step 1: Get top 5 first-token alternatives with max_tokens=1
+    const firstCompletion = await openaiClient.chat.completions.create({
       model: 'gpt-4o-mini',
-      messages: [
-        { role: 'user', content: contextPrompt }
-      ],
-      max_tokens: 3, // Allow up to 3 tokens to get fuller words
+      messages: [{ role: 'user', content: contextPrompt }],
+      max_tokens: 1,
       temperature: 0.9,
       logprobs: true,
       top_logprobs: 5,
     });
 
-    const choice = completion.choices[0];
-    const generatedToken = choice.message.content?.trim() || '';
+    const firstChoice = firstCompletion.choices[0];
+    console.log('✅ Generated first token:', firstChoice.message.content?.trim());
     
-    console.log('✅ Generated token:', generatedToken);
-    
-    // Extract top words from logprobs with their probabilities
     const wordsWithProbs: { word: string; probability: number }[] = [];
     
-    if (choice.logprobs?.content && choice.logprobs.content.length > 0) {
-      const tokenLogprobs = choice.logprobs.content[0];
-      if (tokenLogprobs.top_logprobs) {
-        console.log('📈 Top logprobs:');
-        // Get top 5 alternative tokens from first token position
-        for (const logprob of tokenLogprobs.top_logprobs) {
-          const token = logprob.token.trim();
-          // Remove punctuation from the token to get clean words
-          const word = token.replace(/[.,!?;:'"()]/g, '').trim();
-          const probability = Math.exp(logprob.logprob);
-          console.log(`  - "${token}" -> "${word}" (logprob: ${logprob.logprob.toFixed(2)}, prob: ${probability.toFixed(4)})`);
-          if (word.length > 0 && word !== '[end]' && !word.startsWith('<')) {
-            wordsWithProbs.push({ word, probability });
-          }
-        }
+    if (!firstChoice.logprobs?.content || firstChoice.logprobs.content.length === 0) {
+      throw new Error('No logprobs returned');
+    }
+
+    const firstTokenLogprobs = firstChoice.logprobs.content[0].top_logprobs || [];
+    console.log(`\n📊 Found ${firstTokenLogprobs.length} first-token alternatives\n`);
+    
+    // Step 2: Use Llama to generate continuations for all first tokens in one call
+    const firstTokens = firstTokenLogprobs.slice(0, 5);
+    const tokenList = firstTokens.map((logprob, i) => `${i + 1}. "${logprob.token}"`).join('\n');
+    
+    const batchPrompt = `question: ${question}
+current response: "${currentText}"
+
+I have these ${firstTokens.length} possible starting tokens from GPT-4o-mini:
+${tokenList}
+
+For each token, complete it into a single natural word that would continue the response. Return ONLY the completed words, one per line, in the same order. Each line should contain just ONE word.
+
+Example format:
+Word1
+Word2
+Word3`;
+
+    const { text: batchContinuation } = await generateText({
+      model: groq('llama-3.1-8b-instant'),
+      prompt: batchPrompt,
+      maxRetries: 2,
+      temperature: 0.3,
+    });
+    
+    const completedWords = batchContinuation.trim().split('\n').map(w => w.trim()).filter(w => w.length > 0);
+    console.log(`\n✅ Step 2 complete: ${completedWords.length} words generated\n`);
+    
+    const completions = firstTokens.map((logprob, i) => {
+      const probability = Math.exp(logprob.logprob);
+      const line = completedWords[i] || '';
+      // Extract first word from the line (in case Llama returns a sentence)
+      const cleaned = line.replace(/[.,!?;:'"()"""''`]/g, ' ').trim();
+      const words = cleaned.split(/\s+/).filter(w => w.length > 0);
+      const word = words[0] || '';
+      console.log(`  Token: "${logprob.token}" (prob: ${probability.toFixed(4)}) → line: "${line.substring(0, 40)}..." → word: "${word}"`);
+      return { word, probability };
+    });
+    
+    // Step 3: Filter and validate words
+    const commonWords = ['the', 'an', 'of', 'and', 'or', 'to', 'in', 'on', 'at', 'by', 'for', 'with', 'from', 'as', 'is', 'are', 'was', 'be', 'it', 'that', 'this', 'but', 'not', 'can', 'will', 'if', 'so', 'has', 'have', 'had', 'do', 'does', 'did', 'I', 'A'];
+    
+    for (const { word, probability } of completions) {
+      const wordLower = word.toLowerCase();
+      
+      // Filter out single letters (except I and A), punctuation tokens, numbers, and invalid words
+      const isSingleLetter = word.length === 1 && word !== 'I' && word !== 'A';
+      const isPunctuation = /^[^a-zA-Z0-9]+$/.test(word);
+      const isNumber = /^\d+$/.test(word);
+      
+      if (
+        !isSingleLetter &&
+        !isPunctuation &&
+        !isNumber &&
+        word.length >= 1 &&
+        word !== '[end]' &&
+        !word.startsWith('<') &&
+        (
+          commonWords.includes(wordLower) ||
+          /^[A-Z][a-z]+/.test(word) ||
+          word.length >= 4
+        )
+      ) {
+        wordsWithProbs.push({ word, probability });
+        console.log(`  ✓ "${word}" (${probability.toFixed(4)})`);
+      } else {
+        console.log(`  ✗ "${word}" (single letter/punctuation/number/invalid)`);
       }
     }
     
-    // Fallback: use the generated token if no logprobs
-    if (wordsWithProbs.length === 0 && generatedToken.length > 0) {
-      wordsWithProbs.push({ word: generatedToken, probability: 1.0 });
+    // Ensure we have at least 1 option
+    if (wordsWithProbs.length === 0) {
+      wordsWithProbs.push(
+        { word: 'the', probability: 0.5 },
+        { word: 'and', probability: 0.3 },
+      );
     }
     
-    // Ensure we have at least 1 option (use common words if needed)
-    const fallbacks = ['and', 'the', 'to', 'a', 'in', 'for', 'with', 'on', 'of'];
-    let fallbackIndex = 0;
-    while (wordsWithProbs.length < 1) {
-      wordsWithProbs.push({ word: fallbacks[fallbackIndex % fallbacks.length], probability: 0.01 });
-      fallbackIndex++;
-    }
-    
-    console.log(`  → ${wordsWithProbs.length} options from logprobs: [${wordsWithProbs.map(w => `${w.word}(${w.probability.toFixed(3)})`).join(', ')}]`);
-    console.log('');
+    console.log(`\n→ ${wordsWithProbs.length} valid words\n`);
     
     return wordsWithProbs.slice(0, 5); // Return up to 5 words with probabilities
   } catch (error) {
@@ -178,7 +226,7 @@ Rate the user's answer on:
 1. Is that related to the topic?
 2. Did that answer the question briefly / in a high level?
 
-Keep in mind that word limit limits the upper bound of respond, so do not be too strict on detail & depth!
+Keep in mind that word limit limits the upper bound of respond, so detail / depth / explaination is not a requirement and should not be considered when scoring!
 
 Provide your response as JSON:
 {
@@ -202,5 +250,10 @@ Provide your response as JSON:
 
   // Clean markdown code blocks if present
   const cleanText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-  return JSON.parse(cleanText);
+  const result = JSON.parse(cleanText);
+  
+  // Boost score by 20 but cap at 100
+  result.score = Math.min(100, (result.score * 1.5));
+  
+  return result;
 }

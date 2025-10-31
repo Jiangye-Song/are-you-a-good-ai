@@ -25,6 +25,8 @@ interface GameScore {
   realQuestion: string;
   fakeQuestionA: string;
   fakeQuestionB: string;
+  bestSteps: number;
+  totalSteps: number;
   allGeneratedWords?: string[];
 }
 
@@ -35,6 +37,7 @@ export default function Home() {
   const [userPath, setUserPath] = useState<string[]>([]);
   const [choices, setChoices] = useState<string[]>([]);
   const [score, setScore] = useState<GameScore | null>(null);
+  const [isSelecting, setIsSelecting] = useState(false);
   const [userReaction, setUserReaction] = useState<string>('');
   const [error, setError] = useState<string>('');
 
@@ -56,10 +59,12 @@ export default function Home() {
 
   async function handleWordSelect(word: string) {
     try {
+      setIsSelecting(true);
       const result = await selectWord(sessionId, word);
 
       if (!result.success) {
         setError(result.error || 'An error occurred');
+        setIsSelecting(false);
         return;
       }
 
@@ -69,10 +74,12 @@ export default function Home() {
         await finishGame(result.userPath || []);
       } else {
         setChoices(result.nextChoices || []);
+        setIsSelecting(false);
       }
     } catch (err) {
       console.error('Error selecting word:', err);
       setError('Failed to process selection. Please try again.');
+      setIsSelecting(false);
     }
   }
 
@@ -220,6 +227,7 @@ export default function Home() {
           onSubmit={handleSubmit}
           disabled={phase !== 'playing'}
           currentWordCount={userPath.length}
+          isSelecting={isSelecting}
         />
       </Suspense>
 
