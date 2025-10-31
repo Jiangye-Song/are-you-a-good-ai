@@ -236,6 +236,100 @@ export async function selectWord(
   }
 }
 
+export async function undoLastWord(
+  sessionId: string
+): Promise<{
+  success: boolean;
+  userPath?: string[];
+  nextChoices?: string[];
+  error?: string;
+}> {
+  const gameState = gameStore.get(sessionId);
+
+  if (!gameState) {
+    return { success: false, error: 'Game session not found' };
+  }
+
+  if (gameState.userPath.length === 0) {
+    return { success: false, error: 'No words to undo' };
+  }
+
+  // Remove last word from path
+  gameState.userPath.pop();
+  
+  // Remove last turn's word choices
+  gameState.wordChoicesHistory.pop();
+  
+  // Decrement counters
+  gameState.currentTurn--;
+  gameState.totalSteps--;
+  
+  // Adjust bestSteps (remove last step's contribution)
+  // Note: This is an approximation since we don't store individual step scores
+  if (gameState.totalSteps > 0) {
+    const avgStepQuality = gameState.bestSteps / (gameState.totalSteps + 1);
+    gameState.bestSteps = Math.max(0, gameState.bestSteps - avgStepQuality);
+  } else {
+    gameState.bestSteps = 0;
+  }
+  
+  // Mark as incomplete if it was complete
+  gameState.isComplete = false;
+  
+  gameStore.set(sessionId, gameState);
+
+  console.log('↩️ Undo last word');
+  console.log('   New path:', gameState.userPath.join(' ') || '(empty)');
+  console.log(`   Best steps: ${gameState.bestSteps.toFixed(2)} / ${gameState.totalSteps}`);
+
+  // Get the previous turn's choices, or generate new ones if at start
+  let nextChoices: string[];
+  
+  if (gameState.wordChoicesHistory.length > 0) {
+    // Use the last stored choices
+    const lastChoices = gameState.wordChoicesHistory[gameState.wordChoicesHistory.length - 1];
+    const wordMap = new Map<string, WordChoiceWithScore>();
+    for (const choice of lastChoices) {
+      const existing = wordMap.get(choice.word);
+      if (!existing || choice.probability > existing.probability) {
+        wordMap.set(choice.word, choice);
+      }
+    }
+    nextChoices = Array.from(wordMap.keys()).sort(() => Math.random() - 0.5);
+  } else {
+    // At the start, regenerate initial choices
+    const maxLength = parseInt(process.env.MAX_PATH_LENGTH || '12', 10);
+    const [wordsReal, wordsFakeA, wordsFakeB] = await Promise.all([
+      getNextWord(gameState.realQuestion, gameState.userPath, maxLength),
+      getNextWord(gameState.fakeQuestionA, gameState.userPath, maxLength),
+      getNextWord(gameState.fakeQuestionB, gameState.userPath, maxLength),
+    ]);
+
+    const wordChoices: WordChoiceWithScore[] = [
+      ...wordsReal.map(w => ({ word: w.word, source: 'real' as const, probability: w.probability })),
+      ...wordsFakeA.map(w => ({ word: w.word, source: 'fakeA' as const, probability: 0 })),
+      ...wordsFakeB.map(w => ({ word: w.word, source: 'fakeB' as const, probability: 0 })),
+    ];
+
+    gameState.wordChoicesHistory.push(wordChoices);
+    
+    const wordMap = new Map<string, WordChoiceWithScore>();
+    for (const choice of wordChoices) {
+      const existing = wordMap.get(choice.word);
+      if (!existing || choice.probability > existing.probability) {
+        wordMap.set(choice.word, choice);
+      }
+    }
+    nextChoices = Array.from(wordMap.keys()).sort(() => Math.random() - 0.5);
+  }
+
+  return {
+    success: true,
+    userPath: gameState.userPath,
+    nextChoices,
+  };
+}
+
 export async function calculateFinalScore(sessionId: string): Promise<{
   success: boolean;
   score?: {

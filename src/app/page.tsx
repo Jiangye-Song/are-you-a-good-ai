@@ -10,6 +10,7 @@ import { ErrorSnackbar } from '@/components/error-snackbar';
 import {
   startNewGame,
   selectWord,
+  undoLastWord,
   calculateFinalScore,
 } from './actions/game-actions';
 import { generateUserReaction } from './actions/generate-reaction';
@@ -71,7 +72,9 @@ export default function Home() {
       setUserPath(result.userPath || []);
 
       if (result.isComplete) {
-        await finishGame(result.userPath || []);
+        // Word limit reached - clear choices and stop loading
+        setChoices([]);
+        setIsSelecting(false);
       } else {
         setChoices(result.nextChoices || []);
         setIsSelecting(false);
@@ -79,6 +82,27 @@ export default function Home() {
     } catch (err) {
       console.error('Error selecting word:', err);
       setError('Failed to process selection. Please try again.');
+      setIsSelecting(false);
+    }
+  }
+
+  async function handleUndo() {
+    if (!userPath.length) return;
+    
+    try {
+      setIsSelecting(true);
+      const result = await undoLastWord(sessionId);
+      
+      if (result.success) {
+        setUserPath(result.userPath || []);
+        setChoices(result.nextChoices || []);
+      } else {
+        setError(result.error || 'Failed to undo');
+      }
+    } catch (err) {
+      console.error('Error undoing:', err);
+      setError('Failed to undo. Please try again.');
+    } finally {
       setIsSelecting(false);
     }
   }
@@ -225,6 +249,7 @@ export default function Home() {
           choices={choices}
           onSelectWord={handleWordSelect}
           onSubmit={handleSubmit}
+          onUndo={handleUndo}
           disabled={phase !== 'playing'}
           currentWordCount={userPath.length}
           isSelecting={isSelecting}

@@ -5,14 +5,16 @@ interface FakeInputProps {
   choices: string[];
   onSelectWord: (word: string) => void;
   onSubmit: () => void;
+  onUndo: () => void;
   disabled?: boolean;
   currentWordCount?: number;
   isSelecting?: boolean;
 }
 
-export function FakeInput({ currentText, choices, onSelectWord, onSubmit, disabled, currentWordCount = 0, isSelecting = false }: FakeInputProps) {
+export function FakeInput({ currentText, choices, onSelectWord, onSubmit, onUndo, disabled, currentWordCount = 0, isSelecting = false }: FakeInputProps) {
   const maxWords = parseInt(process.env.NEXT_PUBLIC_MAX_PATH_LENGTH || '12', 10);
   const remainingWords = maxWords - currentWordCount;
+  const isAtLimit = currentWordCount >= maxWords;
   
   return (
     <div className="border-t bg-white sticky bottom-0 relative">
@@ -53,6 +55,17 @@ export function FakeInput({ currentText, choices, onSelectWord, onSubmit, disabl
           </div>
         </div>
       )}
+      
+      {/* Word limit reached message */}
+      {isAtLimit && choices.length === 0 && !isSelecting && (
+        <div className="border-b bg-amber-50 px-4 py-3">
+          <div className="max-w-4xl mx-auto">
+            <p className="text-sm text-amber-800 font-medium">
+              ⚠️ Word limit reached ({maxWords} words). Click send to view your results!
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Fake input box */}
       <div className="px-4 py-4">
@@ -66,6 +79,34 @@ export function FakeInput({ currentText, choices, onSelectWord, onSubmit, disabl
                 {currentText && <span className="inline-block w-0.5 h-5 ml-0.5 bg-blue-600 animate-pulse" />}
               </p>
             </div>
+            {/* Undo button */}
+            <button
+              type="button"
+              onClick={onUndo}
+              disabled={disabled || !currentText || isSelecting}
+              className={
+                disabled || !currentText || isSelecting
+                  ? 'shrink-0 w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 cursor-not-allowed'
+                  : 'shrink-0 w-10 h-10 rounded-full bg-gray-300 hover:bg-gray-400 flex items-center justify-center text-gray-700 cursor-pointer transition-colors'
+              }
+              aria-label="Undo last word"
+            >
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M3 7v6h6" />
+                <path d="M21 17a9 9 0 00-9-9 9 9 0 00-6 2.3L3 13" />
+              </svg>
+            </button>
+            {/* Submit button */}
             <button
               type="button"
               onClick={onSubmit}
@@ -94,7 +135,10 @@ export function FakeInput({ currentText, choices, onSelectWord, onSubmit, disabl
             </button>
           </div>
           <p className="text-xs text-gray-400 mt-2 text-center">
-            Select words above to build your response • Click submit when ready
+            {isAtLimit 
+              ? 'Word limit reached • Click send to view results'
+              : 'Select words above to build your response • Click undo to remove last word • Click send when ready'
+            }
           </p>
         </div>
       </div>
