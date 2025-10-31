@@ -89,58 +89,39 @@ export async function getNextWord(
     const firstTokenLogprobs = firstChoice.logprobs.content[0].top_logprobs || [];
     console.log(`\n📊 Found ${firstTokenLogprobs.length} first-token alternatives\n`);
     
-    // Step 2: Use Llama to generate continuations for all first tokens in one call
+    // Step 2: Use first tokens directly (skip Groq processing)
     const firstTokens = firstTokenLogprobs.slice(0, 5);
-    const tokenList = firstTokens.map((logprob, i) => `${i + 1}. "${logprob.token}"`).join('\n');
     
-    const batchPrompt = `question: ${question}
-current response: "${currentText}"
-
-I have these ${firstTokens.length} possible starting tokens from GPT-4o-mini:
-${tokenList}
-
-For each token, complete it into a single natural word that would continue the response. Return ONLY the completed words, one per line, in the same order. Each line should contain just ONE word.
-
-Example format:
-Word1
-Word2
-Word3`;
-
-    const { text: batchContinuation } = await generateText({
-      model: groq('llama-3.1-8b-instant'),
-      prompt: batchPrompt,
-      maxRetries: 2,
-      temperature: 0.3,
-    });
-    
-    const completedWords = batchContinuation.trim().split('\n').map(w => w.trim()).filter(w => w.length > 0);
-    console.log(`\n✅ Step 2 complete: ${completedWords.length} words generated\n`);
-    
-    const completions = firstTokens.map((logprob, i) => {
+    const completions = firstTokens.map((logprob) => {
       const probability = Math.exp(logprob.logprob);
-      const line = completedWords[i] || '';
-      // Extract first word from the line (in case Llama returns a sentence)
-      const cleaned = line.replace(/[.,!?;:'"()"""''`]/g, ' ').trim();
-      const words = cleaned.split(/\s+/).filter(w => w.length > 0);
-      const word = words[0] || '';
-      console.log(`  Token: "${logprob.token}" (prob: ${probability.toFixed(4)}) → line: "${line.substring(0, 40)}..." → word: "${word}"`);
+      const word = logprob.token.trim();
+      console.log(`  Token: "${logprob.token}" (prob: ${probability.toFixed(4)}) → word: "${word}"`);
       return { word, probability };
     });
     
-    // Step 3: Filter and validate words
+    console.log(`\n✅ Step 2 complete: Using tokens directly from GPT-4o-mini\n`);
+    
+    // Step 3: Filter and validate words (but allow punctuation)
     const commonWords = ['the', 'an', 'of', 'and', 'or', 'to', 'in', 'on', 'at', 'by', 'for', 'with', 'from', 'as', 'is', 'are', 'was', 'be', 'it', 'that', 'this', 'but', 'not', 'can', 'will', 'if', 'so', 'has', 'have', 'had', 'do', 'does', 'did', 'I', 'A'];
     
     for (const { word, probability } of completions) {
       const wordLower = word.toLowerCase();
       
-      // Filter out single letters (except I and A), punctuation tokens, numbers, and invalid words
-      const isSingleLetter = word.length === 1 && word !== 'I' && word !== 'A';
+      // Allow punctuation tokens to pass through
       const isPunctuation = /^[^a-zA-Z0-9]+$/.test(word);
+      
+      if (isPunctuation) {
+        wordsWithProbs.push({ word, probability });
+        console.log(`  ✓ "${word}" (${probability.toFixed(4)}) - punctuation`);
+        continue;
+      }
+      
+      // Filter out single letters (except I and A), numbers, and invalid words
+      const isSingleLetter = word.length === 1 && word !== 'I' && word !== 'A';
       const isNumber = /^\d+$/.test(word);
       
       if (
         !isSingleLetter &&
-        !isPunctuation &&
         !isNumber &&
         word.length >= 1 &&
         word !== '[end]' &&
