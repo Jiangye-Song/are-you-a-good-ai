@@ -8,21 +8,24 @@ A fun interactive game where you roleplay as an AI assistant! Three different AI
 2. Three AI models (answering different questions) suggest words to continue your response
 3. Select words one by one to build your response (up to 12 words)
 4. Watch the loading skeleton while the next word suggestions are generated
-5. Click submit when ready, or let the game end at the word limit
-6. Get scored on how coherent and relevant your response is!
-7. See your "best steps" score showing how often you picked optimal words
+5. Use the **undo button** (↶) to remove the last word if you make a mistake
+6. When you reach the word limit, you'll see a notification - click **send** to submit
+7. Or click **send** anytime before the limit to submit early
+8. Get scored on how coherent and relevant your response is!
+9. See your "best steps" score showing how often you picked optimal words
 
 ## 🚀 Features
 
 - **Chat-style UI** - Modern interface similar to ChatGPT/Claude
-- **Hybrid AI approach** - GPT-4o-mini with logprobs for word suggestions, Llama 8B for question generation and scoring
-- **Two-step word generation** - First token from GPT-4o-mini, continuation from Llama for natural words
+- **Direct token generation** - GPT-4o-mini with logprobs provides words directly (no Llama completion needed)
 - **Probability tracking** - Each word choice shows its probability, tracks optimal vs suboptimal selections
+- **Undo functionality** - Remove last word with undo button (↶) to correct mistakes
+- **Smart word limit handling** - Game notifies when limit reached instead of auto-submitting
 - **Best steps metric** - See how many optimal word choices you made (best steps / total steps)
 - **Real-time streaming** - Watch your response build word by word
 - **Loading states** - Skeleton UI shows while generating next word options
 - **AI scoring** - Get feedback on coherence and relevance (boosted by +20 for better experience)
-- **Punctuation enhancement** - Final answer gets natural punctuation added by AI
+- **Punctuation support** - Punctuation tokens allowed as selectable options (skip processing)
 - **Distractor reveal** - See all three questions at the end
 - **Word tracking** - View all unique words generated during the game
 
@@ -32,8 +35,8 @@ A fun interactive game where you roleplay as an AI assistant! Three different AI
 - **TypeScript** - Type-safe development
 - **Tailwind CSS 4** - Modern styling
 - **shadcn/ui** - Beautiful UI components
-- **OpenAI GPT-4o-mini** - Fast LLM with logprobs for word probability tracking
-- **Groq Llama 3.1 8B Instant** - Question generation, word completion, punctuation, and scoring
+- **OpenAI GPT-4o-mini** - Fast LLM with logprobs for word probability tracking (direct tokens)
+- **Groq Llama 3.1 8B Instant** - Question generation, punctuation, and scoring
 - **Vercel AI SDK** - AI integration utilities for Groq
 - **Native OpenAI SDK** - Direct API access for logprobs feature
 
@@ -89,30 +92,28 @@ npm run dev
 
 ## 🎯 Game Mechanics
 
-### Word Generation (Hybrid Two-Step Approach)
+### Word Generation (Simplified Direct Approach)
 
-**Step 1: Get First Token Probabilities (OpenAI GPT-4o-mini)**
+**Single Step: Get Tokens with Probabilities (OpenAI GPT-4o-mini)**
 - Uses OpenAI's logprobs feature with `max_tokens=1, top_logprobs=5`
 - Returns 5 most probable first tokens with their probability scores
 - Each token gets a probability value (e.g., 0.7491 for "The", 0.1671 for "A")
-
-**Step 2: Complete Words Naturally (Groq Llama 3.1 8B)**
-- For each first token, Llama generates a natural continuation
-- Batch processing: all 5 tokens sent in one request to reduce API calls
-- Extracts first complete word from each continuation
-- Probability from Step 1 is preserved for tracking
+- Tokens are used directly as word options (trimmed only)
+- Improved prompt ensures GPT-4o-mini generates clean, complete words
 
 **Word Filtering:**
 - Removes single letters (except "I" and "A")
-- Filters out pure numbers and punctuation tokens
+- Filters out pure numbers
+- Punctuation tokens are **allowed** and skip additional processing
 - Validates minimum word length and common word patterns
 - Ensures at least 1 valid option per turn
 
 **Why This Approach?**
-- GPT-4o-mini logprobs provide accurate probability distributions
-- Llama completes tokens into natural, well-formed words
-- Avoids concatenation issues (like "Dolphinsolphins" from naive approaches)
-- Reduces API calls while maintaining quality
+- Simpler and faster than two-step approaches
+- GPT-4o-mini with improved prompting generates quality words directly
+- Punctuation support allows natural pauses in responses
+- Reduced API calls and complexity
+- Direct probability tracking from source model
 
 ### Probability Tracking & Best Steps
 
@@ -146,6 +147,23 @@ Each word choice has a probability from 0 to 1 (displayed as percentage). The ga
 - Each question generates its own word suggestions
 - Word choices are mixed together (with source tracking for probability)
 - Distractor words get probability = 0 (always suboptimal choices)
+
+### Undo Functionality
+
+- **Undo Button** (↶): Removes the last selected word
+- Restores previous word choices from history
+- Adjusts bestSteps score by removing last step's contribution
+- Re-enables word selection if limit was reached
+- Allows correction of mistakes without restarting
+
+### Word Limit Behavior
+
+- Game continues until 12 words (configurable)
+- When limit reached:
+  - Word choices are cleared
+  - Amber warning banner appears
+  - User must click send button to view results
+- User can also submit early at any time before limit
 
 ## � Storage
 
@@ -190,9 +208,8 @@ src/
 ### AI Models
 
 - **Question Generation**: Llama 3.1 8B Instant via Groq
-- **Word Suggestions (Step 1)**: GPT-4o-mini with logprobs (probability tracking)
-- **Word Completion (Step 2)**: Llama 3.1 8B Instant via Groq
-- **Punctuation**: Llama 3.1 8B Instant via Groq
+- **Word Suggestions**: GPT-4o-mini with logprobs (direct tokens, probability tracking)
+- **Punctuation**: Llama 3.1 8B Instant via Groq (final answer enhancement)
 - **Scoring**: Llama 3.1 8B Instant via Groq (with +20 boost applied)
 - **Logprobs**: top_logprobs=5 returns the 5 most probable next tokens
 - Models can be configured in `src/lib/ai.ts`
